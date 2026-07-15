@@ -1,64 +1,59 @@
 `timescale 1ns/1ps
 
 module axi_memory_model #(
-  parameter int unsigned ADDR_WIDTH       = 32,
-  parameter int unsigned DATA_WIDTH       = 64,
-  parameter int unsigned MEM_BYTES        = 65536,
-  parameter int unsigned AW_STALL_CYCLES  = 0,
-  parameter int unsigned W_STALL_EVERY    = 0,
-  parameter int unsigned W_STALL_CYCLES   = 0,
-  parameter int unsigned AR_STALL_CYCLES  = 0,
-  parameter int unsigned R_GAP_CYCLES     = 0,
-  parameter logic [1:0]  BRESP_VALUE       = 2'b00,
-  parameter logic [1:0]  RRESP_VALUE       = 2'b00,
-  parameter int unsigned RLAST_MODE        = 0,
-  parameter int unsigned BVALID_DELAY      = 0,
-  parameter int unsigned RVALID_DELAY      = 0
+  parameter int unsigned ADDR_WIDTH        = 32,
+  parameter int unsigned DATA_WIDTH        = 64,
+  parameter int unsigned MEM_BYTES         = 65536,
+  parameter int unsigned AW_STALL_CYCLES   = 0,
+  parameter int unsigned W_STALL_EVERY     = 0,
+  parameter int unsigned W_STALL_CYCLES    = 0,
+  parameter int unsigned AR_STALL_CYCLES   = 0,
+  parameter int unsigned R_GAP_CYCLES      = 0,
+  parameter logic [1:0]  BRESP_VALUE        = 2'b00,
+  parameter logic [1:0]  RRESP_VALUE        = 2'b00,
+  parameter int unsigned RLAST_MODE         = 0,
+  parameter int unsigned BVALID_DELAY       = 0,
+  parameter int unsigned RVALID_DELAY       = 0
 ) (
-  input  logic                    clk,
-  input  logic                    rst_n,
-
-  input  logic [ADDR_WIDTH-1:0]   s_axi_awaddr,
-  input  logic [7:0]              s_axi_awlen,
-  input  logic [2:0]              s_axi_awsize,
-  input  logic [1:0]              s_axi_awburst,
-  input  logic                    s_axi_awvalid,
-  output logic                    s_axi_awready,
-
-  input  logic [DATA_WIDTH-1:0]   s_axi_wdata,
-  input  logic [DATA_WIDTH/8-1:0] s_axi_wstrb,
-  input  logic                    s_axi_wlast,
-  input  logic                    s_axi_wvalid,
-  output logic                    s_axi_wready,
-
-  output logic [1:0]              s_axi_bresp,
-  output logic                    s_axi_bvalid,
-  input  logic                    s_axi_bready,
-
-  input  logic [ADDR_WIDTH-1:0]   s_axi_araddr,
-  input  logic [7:0]              s_axi_arlen,
-  input  logic [2:0]              s_axi_arsize,
-  input  logic [1:0]              s_axi_arburst,
-  input  logic                    s_axi_arvalid,
-  output logic                    s_axi_arready,
-
-  output logic [DATA_WIDTH-1:0]   s_axi_rdata,
-  output logic [1:0]              s_axi_rresp,
-  output logic                    s_axi_rlast,
-  output logic                    s_axi_rvalid,
-  input  logic                    s_axi_rready
+  input  logic                       clk,
+  input  logic                       rst_n,
+  input  logic [ADDR_WIDTH-1:0]      s_axi_awaddr,
+  input  logic [7:0]                 s_axi_awlen,
+  input  logic [2:0]                 s_axi_awsize,
+  input  logic [1:0]                 s_axi_awburst,
+  input  logic                       s_axi_awvalid,
+  output logic                       s_axi_awready,
+  input  logic [DATA_WIDTH-1:0]      s_axi_wdata,
+  input  logic [DATA_WIDTH/8-1:0]    s_axi_wstrb,
+  input  logic                       s_axi_wlast,
+  input  logic                       s_axi_wvalid,
+  output logic                       s_axi_wready,
+  output logic [1:0]                 s_axi_bresp,
+  output logic                       s_axi_bvalid,
+  input  logic                       s_axi_bready,
+  input  logic [ADDR_WIDTH-1:0]      s_axi_araddr,
+  input  logic [7:0]                 s_axi_arlen,
+  input  logic [2:0]                 s_axi_arsize,
+  input  logic [1:0]                 s_axi_arburst,
+  input  logic                       s_axi_arvalid,
+  output logic                       s_axi_arready,
+  output logic [DATA_WIDTH-1:0]      s_axi_rdata,
+  output logic [1:0]                 s_axi_rresp,
+  output logic                       s_axi_rlast,
+  output logic                       s_axi_rvalid,
+  input  logic                       s_axi_rready
 );
 
   localparam int unsigned RLAST_NORMAL  = 0;
   localparam int unsigned RLAST_EARLY   = 1;
   localparam int unsigned RLAST_MISSING = 2;
+  localparam int unsigned DATA_BYTES    = DATA_WIDTH/8;
 
   logic [7:0] mem [0:MEM_BYTES-1];
   logic [ADDR_WIDTH-1:0] write_addr;
   logic [7:0] write_beats_left;
   logic write_active;
   logic write_response_pending;
-
   logic [ADDR_WIDTH-1:0] read_addr;
   logic [7:0] read_beats_left;
   logic read_active;
@@ -89,7 +84,6 @@ module axi_memory_model #(
         aw_wait_count <= aw_wait_count + 1;
       else
         aw_wait_count <= 0;
-
       if (s_axi_arvalid && !s_axi_arready)
         ar_wait_count <= ar_wait_count + 1;
       else
@@ -99,14 +93,14 @@ module axi_memory_model #(
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
-      write_addr              <= '0;
-      write_beats_left        <= '0;
-      write_active            <= 1'b0;
-      write_response_pending  <= 1'b0;
-      s_axi_bvalid            <= 1'b0;
-      w_beat_count            <= 0;
-      w_stall_count           <= 0;
-      bvalid_delay_count      <= 0;
+      write_addr             <= '0;
+      write_beats_left       <= '0;
+      write_active           <= 1'b0;
+      write_response_pending <= 1'b0;
+      s_axi_bvalid           <= 1'b0;
+      w_beat_count           <= 0;
+      w_stall_count          <= 0;
+      bvalid_delay_count     <= 0;
     end else begin
       if (w_stall_count != 0)
         w_stall_count <= w_stall_count - 1;
@@ -121,14 +115,15 @@ module axi_memory_model #(
       end
 
       if (s_axi_awvalid && s_axi_awready) begin
-        write_addr       <= s_axi_awaddr;
+        // AXI unaligned transfer data lanes are referenced to the aligned bus word.
+        write_addr       <= {s_axi_awaddr[ADDR_WIDTH-1:3], 3'b000};
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
         w_beat_count     <= 0;
       end
 
       if (s_axi_wvalid && s_axi_wready) begin
-        for (i = 0; i < DATA_WIDTH/8; i = i + 1)
+        for (i = 0; i < DATA_BYTES; i = i + 1)
           if (s_axi_wstrb[i])
             mem[write_addr + i] <= s_axi_wdata[i*8 +: 8];
 
@@ -170,7 +165,7 @@ module axi_memory_model #(
         rvalid_delay_count <= rvalid_delay_count - 1;
 
       if (s_axi_arvalid && s_axi_arready) begin
-        read_addr          <= s_axi_araddr;
+        read_addr          <= {s_axi_araddr[ADDR_WIDTH-1:3], 3'b000};
         read_beats_left    <= s_axi_arlen + 1'b1;
         read_active        <= 1'b1;
         r_gap_count        <= 0;
@@ -179,7 +174,7 @@ module axi_memory_model #(
 
       if (read_active && !s_axi_rvalid &&
           (r_gap_count == 0) && (rvalid_delay_count == 0)) begin
-        for (i = 0; i < DATA_WIDTH/8; i = i + 1)
+        for (i = 0; i < DATA_BYTES; i = i + 1)
           s_axi_rdata[i*8 +: 8] <= mem[read_addr + i];
 
         case (RLAST_MODE)
