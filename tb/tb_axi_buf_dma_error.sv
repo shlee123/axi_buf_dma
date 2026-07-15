@@ -69,14 +69,19 @@ module tb_axi_buf_dma_error #(
   endtask
 
   task automatic start_dma(input logic direction);
+    integer cycles;
     begin
       @(negedge clk); dma_start=0; dma_sa=32'h100; dma_length=7'd3; dma_rw=direction;
       @(negedge clk); dma_start=1;
-      fork
-        begin wait(dma_ready === 1'b1); end
-        begin repeat(200) @(posedge clk); $display("RESULT kind=%0d timeout_wait=1", TEST_KIND); $finish; end
-      join_any
-      disable fork;
+      cycles = 0;
+      while ((dma_ready !== 1'b1) && (cycles < 200)) begin
+        @(posedge clk);
+        cycles = cycles + 1;
+      end
+      if (dma_ready !== 1'b1) begin
+        $display("RESULT kind=%0d timeout_wait=1", TEST_KIND);
+        $finish;
+      end
       @(negedge clk); dma_start = 0;
       repeat (3) @(posedge clk);
     end
