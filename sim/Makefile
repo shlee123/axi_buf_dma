@@ -1,6 +1,7 @@
 ROOT := ..
 BUILD := build
 SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
+SIMV_BYTE_BOUNDARY := $(BUILD)/tb_axi_buf_dma_byte_boundary.vvp
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
 SIMV_BOUNDARY := $(BUILD)/tb_axi_buf_dma_boundary.vvp
@@ -19,6 +20,10 @@ RTL := \
 TB_BYTE := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma_byte_addressing.sv
+
+TB_BYTE_BOUNDARY := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_byte_boundary.sv
 
 TB := \
   $(ROOT)/tb/axi_protocol_checker.sv \
@@ -56,7 +61,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all regression run-byte-addressing legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
+.PHONY: all regression run-byte-addressing run-byte-boundary legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
@@ -67,9 +72,12 @@ run-byte-addressing: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_addressing -o $(SIMV_BYTE) $(RTL) $(TB_BYTE)
 	vvp $(SIMV_BYTE)
 
-# V2 default regression. Legacy tests remain available while their LENGTH
-# programming values are migrated from 32-bit words to bytes.
-regression: run-byte-addressing
+run-byte-boundary: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_boundary -o $(SIMV_BYTE_BOUNDARY) $(RTL) $(TB_BYTE_BOUNDARY)
+	vvp $(SIMV_BYTE_BOUNDARY)
+
+# V2 default regression uses byte-based LENGTH programming.
+regression: run-byte-addressing run-byte-boundary
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
