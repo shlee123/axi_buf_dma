@@ -45,7 +45,7 @@ run-backpressure: compile-backpressure
 	vvp $(SIMV_BP)
 
 run-error: $(BUILD)
-	iverilog -g2012 -Wall -DTEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
+	iverilog -g2012 -Wall -Ptb_axi_buf_dma_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
 	  -o $(SIMV_ERR) $(RTL) $(TB_ERROR)
 	vvp $(SIMV_ERR)
 
