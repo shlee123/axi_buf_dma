@@ -2,6 +2,8 @@ ROOT := ..
 BUILD := build
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
+TEST_KIND ?= 1
+SIMV_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).vvp
 
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
@@ -23,7 +25,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all compile run compile-backpressure run-backpressure run-errors regression clean
+.PHONY: all compile run compile-backpressure run-backpressure run-error run-errors regression clean
 
 all: regression
 
@@ -42,13 +44,16 @@ compile-backpressure: $(BUILD)
 run-backpressure: compile-backpressure
 	vvp $(SIMV_BP)
 
+run-error: $(BUILD)
+	iverilog -g2012 -Wall -DTEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
+	  -o $(SIMV_ERR) $(RTL) $(TB_ERROR)
+	vvp $(SIMV_ERR)
+
 run-errors: $(BUILD)
 	@set -e; \
 	for kind in 1 2 3 4 5 6; do \
 	  echo "Running directed error test $$kind"; \
-	  iverilog -g2012 -Wall -DTEST_KIND=$$kind -s tb_axi_buf_dma_error \
-	    -o $(BUILD)/tb_axi_buf_dma_error_$$kind.vvp $(RTL) $(TB_ERROR); \
-	  vvp $(BUILD)/tb_axi_buf_dma_error_$$kind.vvp; \
+	  $(MAKE) --no-print-directory run-error TEST_KIND=$$kind; \
 	done
 
 regression: run run-backpressure run-errors
