@@ -32,8 +32,15 @@ jobs:
       - name: Directed backpressure test
         run: make -C sim run-backpressure
 
-      - name: BRESP error test
-        run: make -C sim run-error TEST_KIND=1
+      - name: Compile BRESP test
+        run: |
+          mkdir -p sim/build
+          iverilog -g2012 -Wall -DTEST_KIND=1 -s tb_axi_buf_dma_error \
+            -o sim/build/bresp.vvp rtl/dma_pkg.sv rtl/axi_buf_dma.sv \
+            tb/axi_memory_model.sv tb/tb_axi_buf_dma_error.sv
+
+      - name: Execute BRESP test
+        run: vvp sim/build/bresp.vvp
 
       - name: RRESP error test
         run: make -C sim run-error TEST_KIND=2
