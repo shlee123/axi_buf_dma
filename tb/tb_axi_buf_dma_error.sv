@@ -1,11 +1,8 @@
 `timescale 1ns/1ps
 
-module tb_axi_buf_dma_error;
-`ifndef TEST_KIND
-  localparam int TEST_KIND = 1;
-`else
-  localparam int TEST_KIND = `TEST_KIND;
-`endif
+module tb_axi_buf_dma_error #(
+  parameter int TEST_KIND = 1
+);
 
   localparam logic [1:0] BRESP_CFG = (TEST_KIND == 1) ? 2'b10 : 2'b00;
   localparam logic [1:0] RRESP_CFG = (TEST_KIND == 2) ? 2'b10 : 2'b00;
@@ -108,10 +105,12 @@ module tb_axi_buf_dma_error;
 
     if (!dma_error || dma_error_code !== expected_code)
       $fatal(1,"Expected error %0d, got error=%0b code=%0d", expected_code, dma_error, dma_error_code);
+    if (!irq_error_status || !dma_irq)
+      $fatal(1,"Error interrupt was not asserted");
     if ((TEST_KIND == 5 || TEST_KIND == 6) && !timeout_status)
       $fatal(1,"Timeout status was not asserted");
 
-    $display("Directed error test %0d PASSED, code=%0d irq=%0b", TEST_KIND, dma_error_code, irq_error_status);
+    $display("Directed error test %0d PASSED, code=%0d", TEST_KIND, dma_error_code);
     $finish;
   end
 endmodule
