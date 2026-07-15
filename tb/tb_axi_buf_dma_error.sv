@@ -76,14 +76,18 @@ module tb_axi_buf_dma_error;
       @(negedge clk); dma_start=0; dma_sa=32'h100; dma_length=7'd3; dma_rw=direction;
       @(negedge clk); dma_start=1;
       fork
-        begin wait(dma_ready === 1'b1); end
-        begin repeat(200) @(posedge clk); $fatal(1,"DMA did not terminate"); end
+        begin
+          wait(dma_ready === 1'b1);
+          wait(irq_error_status === 1'b1);
+        end
+        begin
+          repeat(200) @(posedge clk);
+          $fatal(1,"DMA or error interrupt did not terminate");
+        end
       join_any
       disable fork;
       @(negedge clk);
       dma_start = 0;
-      @(posedge clk);
-      @(posedge clk);
     end
   endtask
 
