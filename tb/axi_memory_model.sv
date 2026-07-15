@@ -1,9 +1,14 @@
 `timescale 1ns/1ps
 
 module axi_memory_model #(
-  parameter int unsigned ADDR_WIDTH = 32,
-  parameter int unsigned DATA_WIDTH = 64,
-  parameter int unsigned MEM_BYTES  = 65536
+  parameter int unsigned ADDR_WIDTH       = 32,
+  parameter int unsigned DATA_WIDTH       = 64,
+  parameter int unsigned MEM_BYTES        = 65536,
+  parameter int unsigned AW_STALL_CYCLES  = 0,
+  parameter int unsigned W_STALL_EVERY    = 0,
+  parameter int unsigned W_STALL_CYCLES   = 0,
+  parameter int unsigned AR_STALL_CYCLES  = 0,
+  parameter int unsigned R_GAP_CYCLES     = 0
 ) (
   input  logic                  clk,
   input  logic                  rst_n,
@@ -48,13 +53,37 @@ module axi_memory_model #(
   logic [7:0] read_beats_left;
   logic read_active;
 
+  integer unsigned aw_wait_count;
+  integer unsigned ar_wait_count;
+  integer unsigned w_beat_count;
+  integer unsigned w_stall_count;
+  integer unsigned r_gap_count;
   integer i;
 
-  assign s_axi_awready = !write_active && !s_axi_bvalid;
-  assign s_axi_wready  = write_active;
-  assign s_axi_arready = !read_active && !s_axi_rvalid;
+  assign s_axi_awready = !write_active && !s_axi_bvalid &&
+                         (!s_axi_awvalid || (aw_wait_count >= AW_STALL_CYCLES));
+  assign s_axi_wready  = write_active && (w_stall_count == 0);
+  assign s_axi_arready = !read_active && !s_axi_rvalid &&
+                         (!s_axi_arvalid || (ar_wait_count >= AR_STALL_CYCLES));
   assign s_axi_bresp   = 2'b00;
   assign s_axi_rresp   = 2'b00;
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      aw_wait_count <= 0;
+      ar_wait_count <= 0;
+    end else begin
+      if (s_axi_awvalid && !s_axi_awready)
+        aw_wait_count <= aw_wait_count + 1;
+      else
+        aw_wait_count <= 0;
+
+      if (s_axi_arvalid && !s_axi_arready)
+        ar_wait_count <= ar_wait_count + 1;
+      else
+        ar_wait_count <= 0;
+    end
+  end
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -62,11 +91,17 @@ module axi_memory_model #(
       write_beats_left <= '0;
       write_active     <= 1'b0;
       s_axi_bvalid     <= 1'b0;
+      w_beat_count     <= 0;
+      w_stall_count    <= 0;
     end else begin
+      if (w_stall_count != 0)
+        w_stall_count <= w_stall_count - 1;
+
       if (s_axi_awvalid && s_axi_awready) begin
         write_addr       <= s_axi_awaddr;
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
+        w_beat_count     <= 0;
       end
 
       if (s_axi_wvalid && s_axi_wready) begin
@@ -76,6 +111,12 @@ module axi_memory_model #(
 
         write_addr       <= write_addr + (1 << s_axi_awsize);
         write_beats_left <= write_beats_left - 1'b1;
+        w_beat_count     <= w_beat_count + 1;
+
+        if ((W_STALL_EVERY != 0) &&
+            (((w_beat_count + 1) % W_STALL_EVERY) == 0) &&
+            !s_axi_wlast)
+          w_stall_count <= W_STALL_CYCLES;
 
         if (s_axi_wlast) begin
           write_active <= 1'b0;
@@ -96,14 +137,19 @@ module axi_memory_model #(
       s_axi_rvalid    <= 1'b0;
       s_axi_rdata     <= '0;
       s_axi_rlast     <= 1'b0;
+      r_gap_count     <= 0;
     end else begin
+      if (r_gap_count != 0)
+        r_gap_count <= r_gap_count - 1;
+
       if (s_axi_arvalid && s_axi_arready) begin
         read_addr       <= s_axi_araddr;
         read_beats_left <= s_axi_arlen + 1'b1;
         read_active     <= 1'b1;
+        r_gap_count     <= AR_STALL_CYCLES == 0 ? 0 : 1;
       end
 
-      if (read_active && !s_axi_rvalid) begin
+      if (read_active && !s_axi_rvalid && (r_gap_count == 0)) begin
         for (i = 0; i < DATA_WIDTH/8; i = i + 1)
           s_axi_rdata[i*8 +: 8] <= mem[read_addr + i];
         s_axi_rlast  <= (read_beats_left == 1);
@@ -118,6 +164,7 @@ module axi_memory_model #(
         end else begin
           read_addr       <= read_addr + (1 << s_axi_arsize);
           read_beats_left <= read_beats_left - 1'b1;
+          r_gap_count     <= R_GAP_CYCLES;
         end
       end
     end
