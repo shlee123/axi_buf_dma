@@ -26,26 +26,5 @@ jobs:
       - name: Install Icarus Verilog
         run: sudo apt-get update && sudo apt-get install -y iverilog
 
-      - name: Smoke test
-        run: make -C sim clean run
-
-      - name: Directed backpressure test
-        run: make -C sim run-backpressure
-
-      - name: BRESP error test
-        run: make -C sim run-error TEST_KIND=1
-
-      - name: RRESP error test
-        run: make -C sim run-error TEST_KIND=2
-
-      - name: Early RLAST test
-        run: make -C sim run-error TEST_KIND=3
-
-      - name: Missing RLAST test
-        run: make -C sim run-error TEST_KIND=4
-
-      - name: BVALID timeout test
-        run: make -C sim run-error TEST_KIND=5
-
-      - name: RVALID timeout test
-        run: make -C sim run-error TEST_KIND=6
+      - name: Byte-length and unaligned-address regression
+        run: make -C sim clean regression
