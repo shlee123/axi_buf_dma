@@ -6,6 +6,7 @@ SIMV_BOUNDARY := $(BUILD)/tb_axi_buf_dma_boundary.vvp
 SIMV_READ_BOUNDARY := $(BUILD)/tb_axi_buf_dma_read_boundary.vvp
 SIMV_LENGTH_SWEEP := $(BUILD)/tb_axi_buf_dma_length_sweep.vvp
 SIMV_RANDOM := $(BUILD)/tb_axi_buf_dma_random.vvp
+SIMV_RANDOM_READ := $(BUILD)/tb_axi_buf_dma_random_read.vvp
 TEST_KIND ?= 1
 SIMV_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).vvp
 LOG_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).log
@@ -39,6 +40,10 @@ TB_RANDOM := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma_random.sv
 
+TB_RANDOM_READ := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_random_read.sv
+
 BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AW_STALL_CYCLES=3 \
   -Paxi_memory_model.W_STALL_EVERY=2 \
@@ -46,7 +51,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-error run-errors regression clean
+.PHONY: all compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors regression clean
 
 all: regression
 
@@ -81,6 +86,10 @@ run-random: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_random -o $(SIMV_RANDOM) $(RTL) $(TB_RANDOM)
 	vvp $(SIMV_RANDOM)
 
+run-random-read: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma_random_read -o $(SIMV_RANDOM_READ) $(RTL) $(TB_RANDOM_READ)
+	vvp $(SIMV_RANDOM_READ)
+
 run-error: $(BUILD)
 	iverilog -g2012 -Wall -Ptb_axi_buf_dma_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
 	  -o $(SIMV_ERR) $(RTL) $(TB_ERROR)
@@ -103,7 +112,7 @@ run-errors: $(BUILD)
 	  $(MAKE) --no-print-directory run-error TEST_KIND=$$kind; \
 	done
 
-regression: run run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-errors
+regression: run run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-errors
 
 clean:
 	rm -rf $(BUILD)
