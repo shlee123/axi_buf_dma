@@ -1,0 +1,30 @@
+name: RTL Smoke Test
+
+on:
+  pull_request:
+    paths:
+      - 'rtl/**'
+      - 'tb/**'
+      - 'sim/**'
+      - '.github/workflows/rtl-sim.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'rtl/**'
+      - 'tb/**'
+      - 'sim/**'
+      - '.github/workflows/rtl-sim.yml'
+
+jobs:
+  iverilog-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+
+      - name: Compile and run smoke test
+        run: make -C sim clean all
