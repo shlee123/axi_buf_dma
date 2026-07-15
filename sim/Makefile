@@ -17,6 +17,14 @@ TEST_KIND ?= 1
 SIMV_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).vvp
 LOG_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).log
 
+RELEASE_DOCS := \
+  $(ROOT)/README.md \
+  $(ROOT)/RELEASE_NOTES.md \
+  $(ROOT)/doc/architecture.md \
+  $(ROOT)/doc/design.md \
+  $(ROOT)/doc/verification.md \
+  $(ROOT)/doc/programmer_guide.md
+
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
   $(ROOT)/rtl/axi_buf_dma.sv
@@ -74,12 +82,22 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-error run-byte-errors legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
+.PHONY: all regression release-check run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-error run-byte-errors legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
 $(BUILD):
 	mkdir -p $(BUILD)
+
+release-check:
+	@set -e; \
+	for file in $(RELEASE_DOCS); do \
+	  test -s "$$file" || { echo "Missing or empty release document: $$file"; exit 1; }; \
+	done; \
+	grep -F 'V2.0.0' $(ROOT)/RELEASE_NOTES.md >/dev/null; \
+	grep -F 'byte' $(ROOT)/doc/programmer_guide.md >/dev/null; \
+	grep -F '4 KB' $(ROOT)/doc/verification.md >/dev/null; \
+	echo "Release documentation check passed"
 
 run-byte-addressing: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_addressing -o $(SIMV_BYTE) $(RTL) $(TB_BYTE)
@@ -119,8 +137,8 @@ run-byte-errors: $(BUILD)
 	  $(MAKE) --no-print-directory run-byte-error TEST_KIND=$$kind; \
 	done
 
-# V2 default regression uses byte-based LENGTH programming.
-regression: run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-errors
+# V2 default regression uses byte-based LENGTH programming and validates release documentation.
+regression: release-check run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-errors
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
