@@ -1,5 +1,6 @@
 ROOT := ..
 BUILD := build
+SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
 SIMV_BOUNDARY := $(BUILD)/tb_axi_buf_dma_boundary.vvp
@@ -14,6 +15,10 @@ LOG_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).log
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
   $(ROOT)/rtl/axi_buf_dma.sv
+
+TB_BYTE := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_byte_addressing.sv
 
 TB := \
   $(ROOT)/tb/axi_protocol_checker.sv \
@@ -51,12 +56,20 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors regression clean
+.PHONY: all regression run-byte-addressing legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
 $(BUILD):
 	mkdir -p $(BUILD)
+
+run-byte-addressing: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_addressing -o $(SIMV_BYTE) $(RTL) $(TB_BYTE)
+	vvp $(SIMV_BYTE)
+
+# V2 default regression. Legacy tests remain available while their LENGTH
+# programming values are migrated from 32-bit words to bytes.
+regression: run-byte-addressing
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
@@ -112,7 +125,7 @@ run-errors: $(BUILD)
 	  $(MAKE) --no-print-directory run-error TEST_KIND=$$kind; \
 	done
 
-regression: run run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-errors
+legacy-regression: run run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-errors
 
 clean:
 	rm -rf $(BUILD)
