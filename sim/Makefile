@@ -26,6 +26,7 @@ TB_BYTE := \
   $(ROOT)/tb/tb_axi_buf_dma_byte_addressing.sv
 
 TB_BYTE_BOUNDARY := \
+  $(ROOT)/tb/axi_protocol_checker.sv \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma_byte_boundary.sv
 
