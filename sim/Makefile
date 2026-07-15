@@ -7,6 +7,7 @@ RTL := \
   $(ROOT)/rtl/axi_buf_dma.sv
 
 TB := \
+  $(ROOT)/tb/axi_protocol_checker.sv \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma.sv
 
