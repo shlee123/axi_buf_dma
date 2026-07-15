@@ -3,6 +3,7 @@ BUILD := build
 SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
 SIMV_BYTE_BP := $(BUILD)/tb_axi_buf_dma_byte_backpressure.vvp
 SIMV_BYTE_BOUNDARY := $(BUILD)/tb_axi_buf_dma_byte_boundary.vvp
+SIMV_BYTE_RANDOM := $(BUILD)/tb_axi_buf_dma_byte_random.vvp
 SIMV_BYTE_ERR := $(BUILD)/tb_axi_buf_dma_byte_error_$(TEST_KIND).vvp
 LOG_BYTE_ERR := $(BUILD)/tb_axi_buf_dma_byte_error_$(TEST_KIND).log
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
@@ -27,6 +28,10 @@ TB_BYTE := \
 TB_BYTE_BOUNDARY := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma_byte_boundary.sv
+
+TB_BYTE_RANDOM := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_byte_random.sv
 
 TB_BYTE_ERROR := \
   $(ROOT)/tb/axi_memory_model.sv \
@@ -68,7 +73,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-error run-byte-errors legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
+.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-error run-byte-errors legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
@@ -86,6 +91,10 @@ run-byte-backpressure: $(BUILD)
 run-byte-boundary: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_boundary -o $(SIMV_BYTE_BOUNDARY) $(RTL) $(TB_BYTE_BOUNDARY)
 	vvp $(SIMV_BYTE_BOUNDARY)
+
+run-byte-random: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_random -o $(SIMV_BYTE_RANDOM) $(RTL) $(TB_BYTE_RANDOM)
+	vvp $(SIMV_BYTE_RANDOM)
 
 run-byte-error: $(BUILD)
 	iverilog -g2012 -Wall -Ptb_axi_buf_dma_byte_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_byte_error \
@@ -110,7 +119,7 @@ run-byte-errors: $(BUILD)
 	done
 
 # V2 default regression uses byte-based LENGTH programming.
-regression: run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-errors
+regression: run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-errors
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
