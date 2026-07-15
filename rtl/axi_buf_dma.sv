@@ -9,7 +9,6 @@ module axi_buf_dma #(
 ) (
   input  logic                      clk,
   input  logic                      rst_n,
-
   input  logic [31:0]               dma_sa,
   input  logic [6:0]                dma_length,
   input  logic                      dma_rw,
@@ -19,7 +18,6 @@ module axi_buf_dma #(
   output logic                      dma_error,
   output logic [3:0]                dma_error_code,
   output logic                      timeout_status,
-
   input  logic                      irq_done_enable,
   input  logic                      irq_error_enable,
   input  logic                      irq_done_clear,
@@ -27,37 +25,31 @@ module axi_buf_dma #(
   output logic                      irq_done_status,
   output logic                      irq_error_status,
   output logic                      dma_irq,
-
   input  logic [BUFFER_ADDR_WIDTH-1:0] buf_addr,
   input  logic [31:0]               buf_din,
   output logic [31:0]               buf_dout,
   input  logic                      buf_wr_en,
   input  logic                      buf_csn,
-
   output logic [AXI_ADDR_WIDTH-1:0] m_axi_awaddr,
   output logic [7:0]                m_axi_awlen,
   output logic [2:0]                m_axi_awsize,
   output logic [1:0]                m_axi_awburst,
   output logic                      m_axi_awvalid,
   input  logic                      m_axi_awready,
-
   output logic [AXI_DATA_WIDTH-1:0] m_axi_wdata,
   output logic [AXI_DATA_WIDTH/8-1:0] m_axi_wstrb,
   output logic                      m_axi_wlast,
   output logic                      m_axi_wvalid,
   input  logic                      m_axi_wready,
-
   input  logic [1:0]                m_axi_bresp,
   input  logic                      m_axi_bvalid,
   output logic                      m_axi_bready,
-
   output logic [AXI_ADDR_WIDTH-1:0] m_axi_araddr,
   output logic [7:0]                m_axi_arlen,
   output logic [2:0]                m_axi_arsize,
   output logic [1:0]                m_axi_arburst,
   output logic                      m_axi_arvalid,
   input  logic                      m_axi_arready,
-
   input  logic [AXI_DATA_WIDTH-1:0] m_axi_rdata,
   input  logic [1:0]                m_axi_rresp,
   input  logic                      m_axi_rlast,
@@ -66,23 +58,19 @@ module axi_buf_dma #(
 );
 
   import dma_pkg::*;
-
   localparam logic [1:0] AXI_RESP_OKAY = 2'b00;
 
   dma_state_t state;
   logic [31:0] buffer_mem [0:(1<<BUFFER_ADDR_WIDTH)-1];
-
   logic [AXI_ADDR_WIDTH-1:0] current_addr;
   logic [7:0] remaining_words;
   logic [BUFFER_ADDR_WIDTH:0] buffer_word_index;
   logic direction_write;
-  logic [7:0] burst_beats;
+  logic [AXI_ADDR_WIDTH-1:0] burst_beats;
   logic [7:0] beat_index;
-
   logic [AXI_DATA_WIDTH-1:0] wdata_reg;
   logic [AXI_DATA_WIDTH/8-1:0] wstrb_reg;
   logic wlast_reg;
-
   integer unsigned timeout_count;
   logic wait_state;
   logic forward_progress;
@@ -116,19 +104,17 @@ module axi_buf_dma #(
 
   always_comb begin
     m_axi_awaddr  = current_addr;
-    m_axi_awlen   = burst_beats - 1'b1;
+    m_axi_awlen   = burst_beats[7:0] - 1'b1;
     m_axi_awsize  = 3'b011;
     m_axi_awburst = 2'b01;
     m_axi_awvalid = (state == DMA_W_AW);
-
     m_axi_wdata   = wdata_reg;
     m_axi_wstrb   = wstrb_reg;
     m_axi_wlast   = wlast_reg;
     m_axi_wvalid  = (state == DMA_W_SEND);
     m_axi_bready  = (state == DMA_W_RESP);
-
     m_axi_araddr  = current_addr;
-    m_axi_arlen   = burst_beats - 1'b1;
+    m_axi_arlen   = burst_beats[7:0] - 1'b1;
     m_axi_arsize  = 3'b011;
     m_axi_arburst = 2'b01;
     m_axi_arvalid = (state == DMA_R_AR);
@@ -139,30 +125,12 @@ module axi_buf_dma #(
     wait_state = 1'b0;
     forward_progress = 1'b0;
     case (state)
-      DMA_W_AW: begin
-        wait_state = 1'b1;
-        forward_progress = m_axi_awready;
-      end
-      DMA_W_SEND: begin
-        wait_state = 1'b1;
-        forward_progress = m_axi_wready;
-      end
-      DMA_W_RESP: begin
-        wait_state = 1'b1;
-        forward_progress = m_axi_bvalid;
-      end
-      DMA_R_AR: begin
-        wait_state = 1'b1;
-        forward_progress = m_axi_arready;
-      end
-      DMA_R_DATA: begin
-        wait_state = 1'b1;
-        forward_progress = m_axi_rvalid;
-      end
-      default: begin
-        wait_state = 1'b0;
-        forward_progress = 1'b0;
-      end
+      DMA_W_AW: begin wait_state = 1'b1; forward_progress = m_axi_awready; end
+      DMA_W_SEND: begin wait_state = 1'b1; forward_progress = m_axi_wready; end
+      DMA_W_RESP: begin wait_state = 1'b1; forward_progress = m_axi_bvalid; end
+      DMA_R_AR: begin wait_state = 1'b1; forward_progress = m_axi_arready; end
+      DMA_R_DATA: begin wait_state = 1'b1; forward_progress = m_axi_rvalid; end
+      default: begin wait_state = 1'b0; forward_progress = 1'b0; end
     endcase
   end
 
@@ -170,21 +138,19 @@ module axi_buf_dma #(
                        (timeout_count >= (AXI_TIMEOUT_CYCLES-1));
 
   always_ff @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n)
       timeout_count <= 0;
-    end else if (!wait_state || forward_progress) begin
+    else if (!wait_state || forward_progress)
       timeout_count <= 0;
-    end else if (!timeout_hit) begin
+    else if (!timeout_hit)
       timeout_count <= timeout_count + 1;
-    end
   end
 
   always_ff @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n)
       buf_dout <= 32'b0;
-    end else if (!dma_busy && !buf_csn && !buf_wr_en) begin
+    else if (!dma_busy && !buf_csn && !buf_wr_en)
       buf_dout <= buffer_mem[buf_addr];
-    end
   end
 
   always_ff @(posedge clk) begin
@@ -201,7 +167,6 @@ module axi_buf_dma #(
         irq_done_status <= 1'b1;
       else if (irq_done_clear)
         irq_done_status <= 1'b0;
-
       if (error_event)
         irq_error_status <= 1'b1;
       else if (irq_error_clear)
@@ -221,7 +186,7 @@ module axi_buf_dma #(
       remaining_words   <= '0;
       buffer_word_index <= '0;
       direction_write   <= 1'b0;
-      burst_beats       <= 8'd1;
+      burst_beats       <= 1;
       beat_index        <= '0;
       wdata_reg         <= '0;
       wstrb_reg         <= '0;
@@ -231,7 +196,6 @@ module axi_buf_dma #(
     end else begin
       done_event  <= 1'b0;
       error_event <= 1'b0;
-
       if (!dma_start && !dma_busy)
         dma_ready <= 1'b0;
 
@@ -262,9 +226,8 @@ module axi_buf_dma #(
               dma_error      <= 1'b1;
               dma_error_code <= DMA_ERR_ALIGN;
               state          <= DMA_ERROR;
-            end else begin
+            end else
               state <= DMA_PREP;
-            end
           end
 
           DMA_PREP: begin
@@ -290,7 +253,7 @@ module axi_buf_dma #(
               wdata_reg[63:32] <= 32'b0;
               wstrb_reg <= 8'h0F;
             end
-            wlast_reg <= (beat_index == (burst_beats - 1'b1));
+            wlast_reg <= (beat_index == (burst_beats[7:0] - 1'b1));
             state <= DMA_W_SEND;
           end
 
@@ -303,10 +266,9 @@ module axi_buf_dma #(
                 remaining_words   <= 8'd0;
                 buffer_word_index <= buffer_word_index + 1'b1;
               end
-
-              if (wlast_reg) begin
+              if (wlast_reg)
                 state <= DMA_W_RESP;
-              end else begin
+              else begin
                 beat_index <= beat_index + 1'b1;
                 state <= DMA_W_LOAD;
               end
@@ -319,9 +281,9 @@ module axi_buf_dma #(
                 dma_error      <= 1'b1;
                 dma_error_code <= DMA_ERR_BRESP;
                 state          <= DMA_ERROR;
-              end else if (remaining_words == 0) begin
+              end else if (remaining_words == 0)
                 state <= DMA_DONE;
-              end else begin
+              else begin
                 current_addr <= current_addr + (burst_beats << 3);
                 state <= DMA_PREP;
               end
@@ -339,11 +301,11 @@ module axi_buf_dma #(
                 dma_error      <= 1'b1;
                 dma_error_code <= DMA_ERR_RRESP;
                 state          <= DMA_ERROR;
-              end else if (m_axi_rlast && (beat_index != (burst_beats - 1'b1))) begin
+              end else if (m_axi_rlast && (beat_index != (burst_beats[7:0] - 1'b1))) begin
                 dma_error      <= 1'b1;
                 dma_error_code <= DMA_ERR_RLAST_EARLY;
                 state          <= DMA_ERROR;
-              end else if (!m_axi_rlast && (beat_index == (burst_beats - 1'b1))) begin
+              end else if (!m_axi_rlast && (beat_index == (burst_beats[7:0] - 1'b1))) begin
                 dma_error      <= 1'b1;
                 dma_error_code <= DMA_ERR_RLAST_MISSING;
                 state          <= DMA_ERROR;
@@ -351,7 +313,6 @@ module axi_buf_dma #(
                 buffer_mem[buffer_word_index[BUFFER_ADDR_WIDTH-1:0]] <= m_axi_rdata[31:0];
                 if (remaining_words > 1)
                   buffer_mem[buffer_word_index[BUFFER_ADDR_WIDTH-1:0] + 1'b1] <= m_axi_rdata[63:32];
-
                 if (remaining_words > 1) begin
                   remaining_words   <= remaining_words - 8'd2;
                   buffer_word_index <= buffer_word_index + 2'd2;
@@ -359,17 +320,15 @@ module axi_buf_dma #(
                   remaining_words   <= 8'd0;
                   buffer_word_index <= buffer_word_index + 1'b1;
                 end
-
                 if (m_axi_rlast) begin
-                  if (remaining_words <= 2) begin
+                  if (remaining_words <= 2)
                     state <= DMA_DONE;
-                  end else begin
+                  else begin
                     current_addr <= current_addr + (burst_beats << 3);
                     state <= DMA_PREP;
                   end
-                end else begin
+                end else
                   beat_index <= beat_index + 1'b1;
-                end
               end
             end
           end
