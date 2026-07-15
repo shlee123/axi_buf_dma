@@ -53,7 +53,7 @@ module tb_axi_buf_dma_byte_boundary;
     .s_axi_rresp(rresp), .s_axi_rlast(rlast), .s_axi_rvalid(rvalid),
     .s_axi_rready(rready));
 
-  axi_protocol_checker checker (
+  axi_protocol_checker axi_checker (
     .clk(clk), .rst_n(rst_n),
     .awaddr(awaddr), .awlen(awlen), .awsize(awsize), .awburst(awburst),
     .awvalid(awvalid), .awready(awready),
