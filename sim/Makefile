@@ -4,6 +4,7 @@ SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
 TEST_KIND ?= 1
 SIMV_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).vvp
+LOG_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).log
 
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
@@ -47,7 +48,17 @@ run-backpressure: compile-backpressure
 run-error: $(BUILD)
 	iverilog -g2012 -Wall -Ptb_axi_buf_dma_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
 	  -o $(SIMV_ERR) $(RTL) $(TB_ERROR)
-	vvp $(SIMV_ERR)
+	@vvp $(SIMV_ERR) | tee $(LOG_ERR)
+	@case "$(TEST_KIND)" in \
+	  1) expected='RESULT kind=1 error=1 code=2 irq=1 dma_irq=1 timeout=0' ;; \
+	  2) expected='RESULT kind=2 error=1 code=3 irq=1 dma_irq=1 timeout=0' ;; \
+	  3) expected='RESULT kind=3 error=1 code=4 irq=1 dma_irq=1 timeout=0' ;; \
+	  4) expected='RESULT kind=4 error=1 code=5 irq=1 dma_irq=1 timeout=0' ;; \
+	  5) expected='RESULT kind=5 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  6) expected='RESULT kind=6 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  *) echo "Unsupported TEST_KIND=$(TEST_KIND)"; exit 1 ;; \
+	esac; \
+	grep -F "$$expected" $(LOG_ERR) >/dev/null || { cat $(LOG_ERR); exit 1; }
 
 run-errors: $(BUILD)
 	@set -e; \
