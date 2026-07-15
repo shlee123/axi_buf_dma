@@ -22,28 +22,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install Icarus Verilog
         run: sudo apt-get update && sudo apt-get install -y iverilog
+
       - name: Smoke test
         run: make -C sim clean run
+
       - name: Directed backpressure test
         run: make -C sim run-backpressure
-      - name: Generate BRESP result
-        run: |
-          mkdir -p sim/build
-          iverilog -g2012 -Wall -Ptb_axi_buf_dma_error.TEST_KIND=1 -s tb_axi_buf_dma_error \
-            -o sim/build/bresp.vvp rtl/dma_pkg.sv rtl/axi_buf_dma.sv \
-            tb/axi_memory_model.sv tb/tb_axi_buf_dma_error.sv
-          vvp sim/build/bresp.vvp | tee sim/build/bresp.log
-      - name: BRESP termination check
-        run: grep -F 'RESULT kind=1' sim/build/bresp.log
-      - name: BRESP error flag check
-        run: grep -F 'error=1' sim/build/bresp.log
-      - name: BRESP code check
-        run: grep -F 'code=2' sim/build/bresp.log
-      - name: BRESP IRQ status check
-        run: grep -F 'irq=1' sim/build/bresp.log
-      - name: BRESP IRQ output check
-        run: grep -F 'dma_irq=1' sim/build/bresp.log
-      - name: BRESP timeout clear check
-        run: grep -F 'timeout=0' sim/build/bresp.log
+
+      - name: BRESP error test
+        run: make -C sim run-error TEST_KIND=1
+
+      - name: RRESP error test
+        run: make -C sim run-error TEST_KIND=2
+
+      - name: Early RLAST test
+        run: make -C sim run-error TEST_KIND=3
+
+      - name: Missing RLAST test
+        run: make -C sim run-error TEST_KIND=4
+
+      - name: BVALID timeout test
+        run: make -C sim run-error TEST_KIND=5
+
+      - name: RVALID timeout test
+        run: make -C sim run-error TEST_KIND=6
