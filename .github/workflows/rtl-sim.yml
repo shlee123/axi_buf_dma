@@ -1,4 +1,4 @@
-name: RTL Smoke Test
+name: RTL Regression
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/rtl-sim.yml'
 
 jobs:
-  iverilog-smoke:
+  iverilog-regression:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,5 +26,5 @@ jobs:
       - name: Install Icarus Verilog
         run: sudo apt-get update && sudo apt-get install -y iverilog
 
-      - name: Compile and run smoke test
-        run: make -C sim clean all
+      - name: Compile and run smoke plus directed backpressure tests
+        run: make -C sim clean regression

@@ -1,6 +1,7 @@
 ROOT := ..
 BUILD := build
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
+SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
 
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
@@ -11,9 +12,16 @@ TB := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma.sv
 
-.PHONY: all compile run clean
+BACKPRESSURE_PARAMS := \
+  -Paxi_memory_model.AW_STALL_CYCLES=3 \
+  -Paxi_memory_model.W_STALL_EVERY=2 \
+  -Paxi_memory_model.W_STALL_CYCLES=2 \
+  -Paxi_memory_model.AR_STALL_CYCLES=4 \
+  -Paxi_memory_model.R_GAP_CYCLES=3
 
-all: run
+.PHONY: all compile run compile-backpressure run-backpressure regression clean
+
+all: regression
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -23,6 +31,14 @@ compile: $(BUILD)
 
 run: compile
 	vvp $(SIMV)
+
+compile-backpressure: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma $(BACKPRESSURE_PARAMS) -o $(SIMV_BP) $(RTL) $(TB)
+
+run-backpressure: compile-backpressure
+	vvp $(SIMV_BP)
+
+regression: run run-backpressure
 
 clean:
 	rm -rf $(BUILD)
