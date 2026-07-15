@@ -33,25 +33,19 @@ jobs:
         run: make -C sim run-backpressure
 
       - name: BRESP error test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=1
 
       - name: RRESP error test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=2
 
       - name: Early RLAST test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=3
 
       - name: Missing RLAST test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=4
 
       - name: BVALID timeout test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=5
 
       - name: RVALID timeout test
-        continue-on-error: true
         run: make -C sim run-error TEST_KIND=6
