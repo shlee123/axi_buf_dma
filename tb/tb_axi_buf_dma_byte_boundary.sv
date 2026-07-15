@@ -53,6 +53,15 @@ module tb_axi_buf_dma_byte_boundary;
     .s_axi_rresp(rresp), .s_axi_rlast(rlast), .s_axi_rvalid(rvalid),
     .s_axi_rready(rready));
 
+  axi_protocol_checker axi_checker (
+    .clk(clk), .rst_n(rst_n),
+    .awaddr(awaddr), .awlen(awlen), .awsize(awsize), .awburst(awburst),
+    .awvalid(awvalid), .awready(awready),
+    .wdata(wdata), .wstrb(wstrb), .wlast(wlast), .wvalid(wvalid), .wready(wready),
+    .araddr(araddr), .arlen(arlen), .arsize(arsize), .arburst(arburst),
+    .arvalid(arvalid), .arready(arready),
+    .rdata(rdata), .rresp(rresp), .rlast(rlast), .rvalid(rvalid), .rready(rready));
+
   always @(posedge clk) begin
     if (rst_n && awvalid && awready) begin
       aw_count <= aw_count + 1;
