@@ -1,6 +1,7 @@
 ROOT := ..
 BUILD := build
 SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
+SIMV_BYTE_BP := $(BUILD)/tb_axi_buf_dma_byte_backpressure.vvp
 SIMV_BYTE_BOUNDARY := $(BUILD)/tb_axi_buf_dma_byte_boundary.vvp
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
@@ -61,7 +62,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all regression run-byte-addressing run-byte-boundary legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
+.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
@@ -72,12 +73,16 @@ run-byte-addressing: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_addressing -o $(SIMV_BYTE) $(RTL) $(TB_BYTE)
 	vvp $(SIMV_BYTE)
 
+run-byte-backpressure: $(BUILD)
+	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_addressing $(BACKPRESSURE_PARAMS) -o $(SIMV_BYTE_BP) $(RTL) $(TB_BYTE)
+	vvp $(SIMV_BYTE_BP)
+
 run-byte-boundary: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_boundary -o $(SIMV_BYTE_BOUNDARY) $(RTL) $(TB_BYTE_BOUNDARY)
 	vvp $(SIMV_BYTE_BOUNDARY)
 
 # V2 default regression uses byte-based LENGTH programming.
-regression: run-byte-addressing run-byte-boundary
+regression: run-byte-addressing run-byte-backpressure run-byte-boundary
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
