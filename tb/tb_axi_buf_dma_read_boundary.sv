@@ -25,6 +25,7 @@ module tb_axi_buf_dma_read_boundary;
   integer ar_count;
   integer r_beat_count;
   integer i;
+  logic [31:0] pattern;
 
   always #5 clk = ~clk;
 
@@ -39,7 +40,8 @@ module tb_axi_buf_dma_read_boundary;
     .m_axi_rresp(rresp), .m_axi_rlast(rlast), .m_axi_rvalid(rvalid),
     .m_axi_rready(rready));
 
-  axi_memory_model mem (.*,
+  axi_memory_model mem (
+    .clk, .rst_n,
     .s_axi_awaddr(awaddr), .s_axi_awlen(awlen), .s_axi_awsize(awsize),
     .s_axi_awburst(awburst), .s_axi_awvalid(awvalid), .s_axi_awready(awready),
     .s_axi_wdata(wdata), .s_axi_wstrb(wstrb), .s_axi_wlast(wlast),
@@ -87,8 +89,13 @@ module tb_axi_buf_dma_read_boundary;
     ar_count=0; r_beat_count=0;
     repeat(5) @(posedge clk); rst_n=1;
 
-    for (i=0; i<512; i=i+1)
-      mem.mem[16'h0ff0+i] = (8'h40 + i[7:0]);
+    for (i=0; i<128; i=i+1) begin
+      pattern = 32'hA500_0000 + i;
+      mem.mem[16'h0ff0 + i*4 + 0] = pattern[7:0];
+      mem.mem[16'h0ff0 + i*4 + 1] = pattern[15:8];
+      mem.mem[16'h0ff0 + i*4 + 2] = pattern[23:16];
+      mem.mem[16'h0ff0 + i*4 + 3] = pattern[31:24];
+    end
 
     @(negedge clk); dma_sa=32'h0000_0ff0; dma_length=7'd127; dma_rw=0; dma_start=1;
     fork
@@ -104,7 +111,7 @@ module tb_axi_buf_dma_read_boundary;
     if (r_beat_count != 64) $fatal(1, "Expected 64 R beats, got %0d", r_beat_count);
 
     for (i=0; i<128; i=i+1)
-      buffer_read_check(i[6:0], {8'h43 + ((i*4)>>8), 8'h42 + ((i*4)>>8), 8'h41 + ((i*4)>>8), 8'h40 + ((i*4)>>8)} + (32'h04040404 * (i & 8'h3f)));
+      buffer_read_check(i[6:0], 32'hA500_0000 + i);
 
     $display("Maximum-length read 4KB boundary test PASSED");
     $finish;
