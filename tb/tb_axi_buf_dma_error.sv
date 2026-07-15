@@ -80,6 +80,10 @@ module tb_axi_buf_dma_error;
         begin repeat(200) @(posedge clk); $fatal(1,"DMA did not terminate"); end
       join_any
       disable fork;
+      @(negedge clk);
+      dma_start = 0;
+      @(posedge clk);
+      @(posedge clk);
     end
   endtask
 
