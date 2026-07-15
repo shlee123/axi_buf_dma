@@ -2,6 +2,9 @@ ROOT := ..
 BUILD := build
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
+TEST_KIND ?= 1
+SIMV_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).vvp
+LOG_ERR := $(BUILD)/tb_axi_buf_dma_error_$(TEST_KIND).log
 
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
@@ -12,6 +15,10 @@ TB := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma.sv
 
+TB_ERROR := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_error.sv
+
 BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AW_STALL_CYCLES=3 \
   -Paxi_memory_model.W_STALL_EVERY=2 \
@@ -19,7 +26,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all compile run compile-backpressure run-backpressure regression clean
+.PHONY: all compile run compile-backpressure run-backpressure run-error run-errors regression clean
 
 all: regression
 
@@ -38,7 +45,29 @@ compile-backpressure: $(BUILD)
 run-backpressure: compile-backpressure
 	vvp $(SIMV_BP)
 
-regression: run run-backpressure
+run-error: $(BUILD)
+	iverilog -g2012 -Wall -Ptb_axi_buf_dma_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_error \
+	  -o $(SIMV_ERR) $(RTL) $(TB_ERROR)
+	@vvp $(SIMV_ERR) | tee $(LOG_ERR)
+	@case "$(TEST_KIND)" in \
+	  1) expected='RESULT kind=1 error=1 code=2 irq=1 dma_irq=1 timeout=0' ;; \
+	  2) expected='RESULT kind=2 error=1 code=3 irq=1 dma_irq=1 timeout=0' ;; \
+	  3) expected='RESULT kind=3 error=1 code=4 irq=1 dma_irq=1 timeout=0' ;; \
+	  4) expected='RESULT kind=4 error=1 code=5 irq=1 dma_irq=1 timeout=0' ;; \
+	  5) expected='RESULT kind=5 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  6) expected='RESULT kind=6 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  *) echo "Unsupported TEST_KIND=$(TEST_KIND)"; exit 1 ;; \
+	esac; \
+	grep -F "$$expected" $(LOG_ERR) >/dev/null || { cat $(LOG_ERR); exit 1; }
+
+run-errors: $(BUILD)
+	@set -e; \
+	for kind in 1 2 3 4 5 6; do \
+	  echo "Running directed error test $$kind"; \
+	  $(MAKE) --no-print-directory run-error TEST_KIND=$$kind; \
+	done
+
+regression: run run-backpressure run-errors
 
 clean:
 	rm -rf $(BUILD)
