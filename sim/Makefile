@@ -3,6 +3,8 @@ BUILD := build
 SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
 SIMV_BYTE_BP := $(BUILD)/tb_axi_buf_dma_byte_backpressure.vvp
 SIMV_BYTE_BOUNDARY := $(BUILD)/tb_axi_buf_dma_byte_boundary.vvp
+SIMV_BYTE_ERR := $(BUILD)/tb_axi_buf_dma_byte_error_$(TEST_KIND).vvp
+LOG_BYTE_ERR := $(BUILD)/tb_axi_buf_dma_byte_error_$(TEST_KIND).log
 SIMV := $(BUILD)/tb_axi_buf_dma.vvp
 SIMV_BP := $(BUILD)/tb_axi_buf_dma_backpressure.vvp
 SIMV_BOUNDARY := $(BUILD)/tb_axi_buf_dma_boundary.vvp
@@ -25,6 +27,10 @@ TB_BYTE := \
 TB_BYTE_BOUNDARY := \
   $(ROOT)/tb/axi_memory_model.sv \
   $(ROOT)/tb/tb_axi_buf_dma_byte_boundary.sv
+
+TB_BYTE_ERROR := \
+  $(ROOT)/tb/axi_memory_model.sv \
+  $(ROOT)/tb/tb_axi_buf_dma_byte_error.sv
 
 TB := \
   $(ROOT)/tb/axi_protocol_checker.sv \
@@ -62,7 +68,7 @@ BACKPRESSURE_PARAMS := \
   -Paxi_memory_model.AR_STALL_CYCLES=4 \
   -Paxi_memory_model.R_GAP_CYCLES=3
 
-.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
+.PHONY: all regression run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-error run-byte-errors legacy-regression compile run compile-backpressure run-backpressure run-boundary run-read-boundary run-length-sweep run-random run-random-read run-error run-errors clean
 
 all: regression
 
@@ -81,8 +87,30 @@ run-byte-boundary: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma_byte_boundary -o $(SIMV_BYTE_BOUNDARY) $(RTL) $(TB_BYTE_BOUNDARY)
 	vvp $(SIMV_BYTE_BOUNDARY)
 
+run-byte-error: $(BUILD)
+	iverilog -g2012 -Wall -Ptb_axi_buf_dma_byte_error.TEST_KIND=$(TEST_KIND) -s tb_axi_buf_dma_byte_error \
+	  -o $(SIMV_BYTE_ERR) $(RTL) $(TB_BYTE_ERROR)
+	@vvp $(SIMV_BYTE_ERR) | tee $(LOG_BYTE_ERR)
+	@case "$(TEST_KIND)" in \
+	  1) expected='RESULT kind=1 error=1 code=2 irq=1 dma_irq=1 timeout=0' ;; \
+	  2) expected='RESULT kind=2 error=1 code=3 irq=1 dma_irq=1 timeout=0' ;; \
+	  3) expected='RESULT kind=3 error=1 code=4 irq=1 dma_irq=1 timeout=0' ;; \
+	  4) expected='RESULT kind=4 error=1 code=5 irq=1 dma_irq=1 timeout=0' ;; \
+	  5) expected='RESULT kind=5 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  6) expected='RESULT kind=6 error=1 code=6 irq=1 dma_irq=1 timeout=1' ;; \
+	  *) echo "Unsupported TEST_KIND=$(TEST_KIND)"; exit 1 ;; \
+	esac; \
+	grep -F "$$expected" $(LOG_BYTE_ERR) >/dev/null || { cat $(LOG_BYTE_ERR); exit 1; }
+
+run-byte-errors: $(BUILD)
+	@set -e; \
+	for kind in 1 2 3 4 5 6; do \
+	  echo "Running byte-based directed error test $$kind"; \
+	  $(MAKE) --no-print-directory run-byte-error TEST_KIND=$$kind; \
+	done
+
 # V2 default regression uses byte-based LENGTH programming.
-regression: run-byte-addressing run-byte-backpressure run-byte-boundary
+regression: run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-errors
 
 compile: $(BUILD)
 	iverilog -g2012 -Wall -s tb_axi_buf_dma -o $(SIMV) $(RTL) $(TB)
