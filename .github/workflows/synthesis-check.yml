@@ -1,0 +1,50 @@
+name: Synthesis Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthesis-check:
+    name: Synthesis Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install open-source RTL tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog verilator
+
+      - name: Reject simulation-only constructs in RTL
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden='(^|[^[:alnum:]_])(initial|final|fork|join|join_any|join_none|wait|force|release|mailbox|semaphore|class|program|clocking)([^[:alnum:]_]|$)|#[[:space:]]*[0-9]|\$(display|write|monitor|finish|stop|fatal|error|warning|readmem|writemem)|DPI-C'
+          if grep -RInE --include='*.sv' --include='*.v' "$forbidden" rtl; then
+            echo "Simulation-only construct found under rtl/."
+            exit 1
+          fi
+
+      - name: SystemVerilog elaboration
+        run: |
+          iverilog -g2012 -Wall -s axi_buf_dma -t null \
+            rtl/dma_pkg.sv rtl/axi_buf_dma.sv
+
+      - name: Verilator synthesis-oriented lint
+        run: |
+          verilator --lint-only --sv --Wall -Wno-fatal \
+            --top-module axi_buf_dma \
+            rtl/dma_pkg.sv rtl/axi_buf_dma.sv
+
+      - name: Record sign-off boundary
+        run: |
+          echo "Open-source elaboration and synthesis-oriented lint passed."
+          echo "Vivado or Design Compiler synthesis remains the technology sign-off stage."
