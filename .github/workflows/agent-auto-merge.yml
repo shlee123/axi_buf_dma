@@ -2,7 +2,7 @@ name: Agent Auto Merge
 
 on:
   workflow_run:
-    workflows: ["RTL Regression"]
+    workflows: ["RTL Regression", "Synthesis Check"]
     types: [completed]
   workflow_dispatch:
 
@@ -50,8 +50,11 @@ jobs:
               continue
             fi
 
-            passed="$(jq -r '[.statusCheckRollup[]? | select(.name == "RTL Regression" or .workflowName == "RTL Regression") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
-            [[ "$passed" == "true" ]] || continue
+            rtl_passed="$(jq -r '[.statusCheckRollup[]? | select(.name == "RTL Regression" or .workflowName == "RTL Regression") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
+            synth_passed="$(jq -r '[.statusCheckRollup[]? | select(.name == "Synthesis Check" or .workflowName == "Synthesis Check") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
+
+            [[ "$rtl_passed" == "true" ]] || continue
+            [[ "$synth_passed" == "true" ]] || continue
 
             gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
           done
