@@ -7,16 +7,18 @@ package dma_pkg;
   parameter int unsigned AXI_MAX_BURST_DEFAULT     = 64;
   parameter int unsigned AXI_TIMEOUT_DEFAULT       = 1024;
 
-  typedef enum logic [3:0] {
+  typedef enum logic [4:0] {
     DMA_IDLE,
     DMA_CHECK,
     DMA_PREP,
     DMA_W_AW,
-    DMA_W_LOAD,
+    DMA_W_BUF_REQ,
+    DMA_W_BUF_CAPTURE,
     DMA_W_SEND,
     DMA_W_RESP,
     DMA_R_AR,
     DMA_R_DATA,
+    DMA_R_UNPACK,
     DMA_DONE,
     DMA_ERROR
   } dma_state_t;
