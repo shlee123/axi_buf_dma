@@ -1,5 +1,5 @@
 project: axi_buf_dma
-release: v2.0.0
+release: v2.1.0
 status: release_candidate
 specification:
   address_unit: byte
@@ -16,6 +16,12 @@ quality_gates:
     preferred_tools:
       - Vivado synth_design
       - Synopsys Design Compiler
+notifications:
+  verification_complete:
+    status: pending_configuration
+    task: .agent/tasks/verification-email-notification.md
+    recipient_secret: VERIFICATION_EMAIL_TO
+    default_recipient: tony_lee@syntronix.com.tw
 stages:
   - id: rtl-byte-datapath
     status: complete
@@ -38,16 +44,27 @@ stages:
   - id: documentation-release
     status: complete
     evidence: PR-19
+  - id: synchronous-sram-buffer
+    status: in_progress
+    evidence: PR-21
   - id: synthesis-hardening
     status: pending
     task: .agent/tasks/synthesis-hardening.md
     acceptance:
-      - buffer_mem has one procedural write owner
+      - buffer storage has one procedural write owner
       - timeout counter width is parameter-derived
       - AXI data-width assumptions are explicit or fully parameterized
       - no simulation-only construct exists under rtl/
       - Synthesis Check passes
       - RTL Regression remains green
+  - id: verification-completion-email
+    status: pending_configuration
+    task: .agent/tasks/verification-email-notification.md
+    acceptance:
+      - all required verification checks pass
+      - one email is sent for the verified release commit
+      - duplicate delivery is prevented
+      - credentials remain in GitHub Actions secrets
   - id: agent-framework
     status: in_progress
     acceptance:
@@ -55,8 +72,9 @@ stages:
       - auto-merge is opt-in and gated by RTL Regression and Synthesis Check
       - agent-generated changes use same-repository branches only
       - no pull-request code is executed by the privileged merge workflow
+      - verification completion can trigger a secure email notification
 next_release:
-  name: v2.0.0
+  name: v2.1.0
   required_checks:
     - RTL Regression
     - Synthesis Check
