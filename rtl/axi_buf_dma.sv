@@ -64,7 +64,6 @@ module axi_buf_dma #(
   localparam int unsigned BUFFER_BYTES = (1 << BUFFER_ADDR_WIDTH) * 4;
 
   dma_state_t state;
-  logic [31:0] buffer_mem [0:(1<<BUFFER_ADDR_WIDTH)-1];
 
   logic [AXI_ADDR_WIDTH-1:0] current_addr;
   logic [9:0] remaining_bytes;
@@ -80,6 +79,13 @@ module axi_buf_dma #(
   logic [3:0] bytes_this_beat;
   logic [AXI_DATA_WIDTH-1:0] packed_wdata;
   logic [AXI_DATA_WIDTH/8-1:0] packed_wstrb;
+
+  logic [AXI_DATA_WIDTH-1:0] buffer_dma_read_data;
+  logic buffer_dma_write_enable;
+  logic [BUFFER_ADDR_WIDTH+1:0] buffer_dma_write_addr;
+  logic [AXI_DATA_WIDTH-1:0] buffer_dma_write_data;
+  logic [AXI_DATA_WIDTH/8-1:0] buffer_dma_write_strb;
+  logic read_beat_accept;
 
   integer unsigned timeout_count;
   logic wait_state;
@@ -118,15 +124,25 @@ module axi_buf_dma #(
     end
   endfunction
 
-  function automatic [7:0] get_buffer_byte(input logic [9:0] byte_index);
-    integer unsigned word_index;
-    integer unsigned byte_lane;
-    begin
-      word_index = byte_index >> 2;
-      byte_lane = byte_index & 3;
-      get_buffer_byte = buffer_mem[word_index][byte_lane*8 +: 8];
-    end
-  endfunction
+  axi_buf_dma_buffer #(
+    .ADDR_WIDTH     (BUFFER_ADDR_WIDTH),
+    .DMA_DATA_WIDTH (AXI_DATA_WIDTH)
+  ) u_local_buffer (
+    .clk                 (clk),
+    .rst_n               (rst_n),
+    .host_enable         (!dma_busy),
+    .host_addr           (buf_addr),
+    .host_wdata          (buf_din),
+    .host_we             (buf_wr_en),
+    .host_csn            (buf_csn),
+    .host_rdata          (buf_dout),
+    .dma_read_byte_addr  (buffer_byte_index[BUFFER_ADDR_WIDTH+1:0]),
+    .dma_read_data       (buffer_dma_read_data),
+    .dma_write_enable    (buffer_dma_write_enable),
+    .dma_write_byte_addr (buffer_dma_write_addr),
+    .dma_write_data      (buffer_dma_write_data),
+    .dma_write_strb      (buffer_dma_write_strb)
+  );
 
   assign dma_irq = (irq_done_status & irq_done_enable) |
                    (irq_error_status & irq_error_enable);
@@ -147,8 +163,29 @@ module axi_buf_dma #(
     for (pack_lane = 0; pack_lane < AXI_BYTES; pack_lane = pack_lane + 1) begin
       pack_offset = pack_lane - lane_start;
       if ((pack_lane >= lane_start) && (pack_offset < remaining_bytes)) begin
-        packed_wdata[pack_lane*8 +: 8] = get_buffer_byte(buffer_byte_index + pack_offset);
+        packed_wdata[pack_lane*8 +: 8] = buffer_dma_read_data[pack_offset*8 +: 8];
         packed_wstrb[pack_lane] = 1'b1;
+      end
+    end
+  end
+
+  assign read_beat_accept = (state == DMA_R_DATA) && m_axi_rvalid &&
+                            (m_axi_rresp == AXI_RESP_OKAY) &&
+                            !(m_axi_rlast && (beat_index != (burst_beats - 1'b1))) &&
+                            !(!m_axi_rlast && (beat_index == (burst_beats - 1'b1)));
+
+  integer read_lane;
+  integer read_offset;
+  always_comb begin
+    buffer_dma_write_enable = read_beat_accept;
+    buffer_dma_write_addr = buffer_byte_index[BUFFER_ADDR_WIDTH+1:0];
+    buffer_dma_write_data = '0;
+    buffer_dma_write_strb = '0;
+    for (read_lane = 0; read_lane < AXI_BYTES; read_lane = read_lane + 1) begin
+      read_offset = read_lane - lane_start;
+      if ((read_lane >= lane_start) && (read_offset < remaining_bytes)) begin
+        buffer_dma_write_data[read_offset*8 +: 8] = m_axi_rdata[read_lane*8 +: 8];
+        buffer_dma_write_strb[read_offset] = 1'b1;
       end
     end
   end
@@ -198,18 +235,6 @@ module axi_buf_dma #(
   end
 
   always_ff @(posedge clk) begin
-    if (!rst_n)
-      buf_dout <= 32'b0;
-    else if (!dma_busy && !buf_csn && !buf_wr_en)
-      buf_dout <= buffer_mem[buf_addr];
-  end
-
-  always_ff @(posedge clk) begin
-    if (rst_n && !dma_busy && !buf_csn && buf_wr_en)
-      buffer_mem[buf_addr] <= buf_din;
-  end
-
-  always_ff @(posedge clk) begin
     if (!rst_n) begin
       irq_done_status  <= 1'b0;
       irq_error_status <= 1'b0;
@@ -225,9 +250,6 @@ module axi_buf_dma #(
     end
   end
 
-  integer read_lane;
-  integer read_offset;
-  integer read_byte_index;
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       state             <= DMA_IDLE;
@@ -358,14 +380,6 @@ module axi_buf_dma #(
                 dma_error_code <= DMA_ERR_RLAST_MISSING;
                 state          <= DMA_ERROR;
               end else begin
-                for (read_lane = 0; read_lane < AXI_BYTES; read_lane = read_lane + 1) begin
-                  read_offset = read_lane - lane_start;
-                  if ((read_lane >= lane_start) && (read_offset < remaining_bytes)) begin
-                    read_byte_index = buffer_byte_index + read_offset;
-                    buffer_mem[read_byte_index >> 2][(read_byte_index & 3)*8 +: 8]
-                      <= m_axi_rdata[read_lane*8 +: 8];
-                  end
-                end
                 remaining_bytes   <= remaining_bytes - bytes_this_beat;
                 buffer_byte_index <= buffer_byte_index + bytes_this_beat;
                 if (m_axi_rlast) begin
