@@ -66,6 +66,14 @@ module axi_memory_model #(
   integer unsigned bvalid_delay_count;
   integer unsigned rvalid_delay_count;
   integer i;
+  integer init_i;
+
+  // Keep all model bytes deterministic. Unused lanes in an unaligned AXI beat
+  // may remain outside the programmed payload, but valid RDATA must not contain X.
+  initial begin
+    for (init_i = 0; init_i < MEM_BYTES; init_i = init_i + 1)
+      mem[init_i] = 8'h00;
+  end
 
   assign s_axi_awready = !write_active && !s_axi_bvalid && !write_response_pending &&
                          (!s_axi_awvalid || (aw_wait_count >= AW_STALL_CYCLES));
@@ -115,7 +123,6 @@ module axi_memory_model #(
       end
 
       if (s_axi_awvalid && s_axi_awready) begin
-        // AXI unaligned transfer data lanes are referenced to the aligned bus word.
         write_addr       <= {s_axi_awaddr[ADDR_WIDTH-1:3], 3'b000};
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
