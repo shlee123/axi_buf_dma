@@ -1,0 +1,41 @@
+name: Agent Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["RTL Regression", "Synthesis Check"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Merge eligible agent pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t prs < <(gh pr list --repo "$REPO" --search 'state:open base:main label:agent-automerge' --json number --jq '.[].number')
+          for pr in "${prs[@]}"; do
+            data="$(gh pr view "$pr" --repo "$REPO" --json isDraft,mergeable,headRefName,headRepositoryOwner,headRefOid,reviewDecision,statusCheckRollup)"
+            [[ "$(jq -r '.isDraft' <<<"$data")" == false ]] || continue
+            [[ "$(jq -r '.mergeable' <<<"$data")" == MERGEABLE ]] || continue
+            [[ "$(jq -r '.headRefName' <<<"$data")" == agent/* ]] || continue
+            [[ "$(jq -r '.headRepositoryOwner.login' <<<"$data")" == "${REPO%%/*}" ]] || continue
+            [[ "$(jq -r '.reviewDecision // ""' <<<"$data")" != CHANGES_REQUESTED ]] || continue
+            sha="$(jq -r '.headRefOid' <<<"$data")"
+            [[ "$EVENT_NAME" != workflow_run || "$sha" == "$HEAD_SHA" ]] || continue
+            rtl="$(jq -r '[.statusCheckRollup[]? | select(.name == "RTL Regression" or .workflowName == "RTL Regression") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
+            synth="$(jq -r '[.statusCheckRollup[]? | select(.name == "Synthesis Check" or .workflowName == "Synthesis Check") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
+            [[ "$rtl" == true && "$synth" == true ]] || continue
+            gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+          done
