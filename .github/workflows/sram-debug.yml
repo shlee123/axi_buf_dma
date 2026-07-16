@@ -6,21 +6,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  byte-addressing:
+  focused-tests:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - run-byte-addressing
+          - run-byte-backpressure
+          - run-byte-boundary
+          - run-byte-random
+        include:
+          - target: run-byte-error
+            test_kind: 1
+          - target: run-byte-error
+            test_kind: 2
+          - target: run-byte-error
+            test_kind: 3
+          - target: run-byte-error
+            test_kind: 4
+          - target: run-byte-error
+            test_kind: 5
+          - target: run-byte-error
+            test_kind: 6
     steps:
       - uses: actions/checkout@v4
       - name: Install Icarus Verilog
         run: sudo apt-get update -qq && sudo apt-get install -y -qq iverilog
-      - name: Run focused byte-addressing test
+      - name: Run focused test
+        env:
+          TARGET: ${{ matrix.target }}
+          TEST_KIND: ${{ matrix.test_kind }}
         run: |
           set -o pipefail
-          make -C sim run-byte-addressing 2>&1 | tee /tmp/sram-debug.log
+          if [ "$TARGET" = "run-byte-error" ]; then
+            make -C sim "$TARGET" TEST_KIND="$TEST_KIND" 2>&1 | tee "/tmp/${TARGET}-${TEST_KIND}.log"
+          else
+            make -C sim "$TARGET" 2>&1 | tee "/tmp/${TARGET}.log"
+          fi
       - name: Upload focused log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sram-debug-log
-          path: /tmp/sram-debug.log
-          if-no-files-found: error
+          name: sram-debug-${{ matrix.target }}-${{ matrix.test_kind || 'default' }}
+          path: /tmp/*.log
+          if-no-files-found: warn
           retention-days: 3
