@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        seed: [1ACE, 5A17, 7E57, B4D3, D00D]
+        seed: ['1ACE', '5A17', '7E57', 'B4D3', 'D00D']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
