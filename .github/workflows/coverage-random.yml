@@ -1,0 +1,56 @@
+name: Coverage Random Regression
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  byte-random:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: ['1ACE', '5A17', '7E57', 'B4D3', 'D00D']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iverilog
+
+      - name: Compile byte random regression
+        run: |
+          mkdir -p build
+          iverilog -g2012 -Wall \
+            -s tb_axi_buf_dma_byte_random \
+            -o build/tb_axi_buf_dma_byte_random.vvp \
+            rtl/dma_pkg.sv \
+            rtl/axi_buf_dma_buffer.sv \
+            rtl/axi_buf_dma.sv \
+            tb/axi_memory_model.sv \
+            tb/tb_axi_buf_dma_byte_random.sv
+
+      - name: Run seed ${{ matrix.seed }}
+        run: |
+          vvp build/tb_axi_buf_dma_byte_random.vvp \
+            +RANDOM_SEED=${{ matrix.seed }} \
+            +RANDOM_CASES=24 | tee build/byte-random-${{ matrix.seed }}.log
+          grep -F 'Deterministic byte-address random write/read regression PASSED' \
+            build/byte-random-${{ matrix.seed }}.log
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byte-random-${{ matrix.seed }}
+          path: build/byte-random-${{ matrix.seed }}.log
+          if-no-files-found: warn
+          retention-days: 7

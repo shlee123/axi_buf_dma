@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 module tb_axi_buf_dma_byte_random;
-  localparam int NUM_CASES = 16;
+  localparam int DEFAULT_NUM_CASES = 16;
 
   logic clk = 0, rst_n = 0;
   logic [31:0] dma_sa;
@@ -30,6 +30,8 @@ module tb_axi_buf_dma_byte_random;
   integer timeout_count;
   integer aw_bursts, ar_bursts;
   integer w_payload_bytes;
+  integer runtime_cases;
+  integer seed_arg;
   logic [15:0] lfsr;
   logic [31:0] start_addr;
   logic [7:0] expected_byte;
@@ -63,14 +65,14 @@ module tb_axi_buf_dma_byte_random;
       aw_bursts <= aw_bursts + 1;
       if (awsize !== 3'd3 || awburst !== 2'b01)
         $fatal(1, "case=%0d invalid AW attributes", case_idx);
-      if ((awaddr[11:0] + ((awlen + 1) << 3)) > 4096)
+      if (({1'b0, awaddr[11:3], 3'b000} + ((awlen + 1) << 3)) > 4096)
         $fatal(1, "case=%0d AW burst crosses 4KB boundary", case_idx);
     end
     if (rst_n && arvalid && arready) begin
       ar_bursts <= ar_bursts + 1;
       if (arsize !== 3'd3 || arburst !== 2'b01)
         $fatal(1, "case=%0d invalid AR attributes", case_idx);
-      if ((araddr[11:0] + ((arlen + 1) << 3)) > 4096)
+      if (({1'b0, araddr[11:3], 3'b000} + ((arlen + 1) << 3)) > 4096)
         $fatal(1, "case=%0d AR burst crosses 4KB boundary", case_idx);
     end
     if (rst_n && wvalid && wready)
@@ -160,16 +162,28 @@ module tb_axi_buf_dma_byte_random;
     dma_sa='0; dma_length='0; dma_rw=0; dma_start=0;
     irq_done_enable=1; irq_error_enable=1; irq_done_clear=0; irq_error_clear=0;
     buf_addr='0; buf_din='0; buf_wr_en=0; buf_csn=1;
-    aw_bursts=0; ar_bursts=0; w_payload_bytes=0; lfsr=16'hB4D3;
+    aw_bursts=0; ar_bursts=0; w_payload_bytes=0;
+    runtime_cases = DEFAULT_NUM_CASES;
+    seed_arg = 16'hB4D3;
+    if (!$value$plusargs("RANDOM_CASES=%d", runtime_cases))
+      runtime_cases = DEFAULT_NUM_CASES;
+    if (!$value$plusargs("RANDOM_SEED=%h", seed_arg))
+      seed_arg = 16'hB4D3;
+    if ((runtime_cases < 1) || (runtime_cases > 256))
+      $fatal(1, "RANDOM_CASES must be in the range 1..256, got %0d", runtime_cases);
+    lfsr = seed_arg[15:0];
+    if (lfsr == 16'h0000)
+      $fatal(1, "RANDOM_SEED must be non-zero");
 
-    for (case_idx=0; case_idx<NUM_CASES; case_idx=case_idx+1) begin
+    $display("Byte random regression seed=%04h cases=%0d", lfsr, runtime_cases);
+    for (case_idx=0; case_idx<runtime_cases; case_idx=case_idx+1) begin
       lfsr = {lfsr[14:0], lfsr[15]^lfsr[13]^lfsr[12]^lfsr[10]};
       transfer_bytes = (lfsr[8:0] % 512) + 1;
       start_addr = 32'h0000_3000 + {17'd0, lfsr[11:0]};
       run_case(start_addr, transfer_bytes);
     end
 
-    $display("Deterministic byte-address random write/read regression PASSED");
+    $display("Deterministic byte-address random write/read regression PASSED seed=%04h cases=%0d", seed_arg[15:0], runtime_cases);
     $finish;
   end
 endmodule
