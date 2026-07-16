@@ -16,9 +16,22 @@ A pull request may be merged automatically only when all conditions are true:
 4. The pull request is not a draft.
 5. GitHub reports it as mergeable.
 6. The latest `RTL Regression` workflow for the pull-request head commit completed successfully.
-7. No review has requested changes.
+7. The latest `Synthesis Check` workflow for the pull-request head commit completed successfully.
+8. No review has requested changes.
 
 The merge method is squash.
+
+## RTL quality policy
+
+Changes under `rtl/` must satisfy all of the following:
+
+- no simulation-only constructs such as delays, `initial`, system tasks, classes, mailboxes, queues, DPI, `force`, or `release`;
+- no register or memory object may have multiple procedural write owners unless the target technology and implementation intent are explicitly documented and validated;
+- counters and storage widths should be derived from parameters rather than unconstrained integers when practical;
+- parameterized interfaces must either support the advertised range or contain an explicit elaboration-time restriction;
+- both simulation regression and synthesis-oriented checks must pass.
+
+Open-source checks are the mandatory CI baseline. Vivado `synth_design` or Synopsys Design Compiler is the sign-off synthesis stage when an appropriately licensed runner is available.
 
 ## Failure behavior
 
@@ -26,7 +39,7 @@ A failed, missing, pending, or cancelled check blocks merge. The agent must diag
 
 ## Human decision points
 
-Automation must stop for specification ambiguity, interface compatibility changes, security-sensitive workflow changes, or modifications that require external credentials. Such work requires explicit approval in the pull request or issue.
+Automation must stop for specification ambiguity, interface compatibility changes, security-sensitive workflow changes, technology-specific memory inference decisions, or modifications that require external credentials. Such work requires explicit approval in the pull request or issue.
 
 ## External coding agent interface
 
