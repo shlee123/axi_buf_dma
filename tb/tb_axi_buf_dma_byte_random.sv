@@ -146,9 +146,9 @@ module tb_axi_buf_dma_byte_random;
         $fatal(1, "case=%0d missing AR burst", case_idx);
       for (i=0; i<nbytes; i=i+1) begin
         expected_byte = pattern_byte(case_idx+19, i);
-        if (dut.buffer_mem[i>>2][(i&3)*8 +: 8] !== expected_byte)
+        if (dut.u_local_buffer.mem[i>>2][(i&3)*8 +: 8] !== expected_byte)
           $fatal(1, "case=%0d read mismatch index=%0d expected=%02h got=%02h",
-                 case_idx, i, expected_byte, dut.buffer_mem[i>>2][(i&3)*8 +: 8]);
+                 case_idx, i, expected_byte, dut.u_local_buffer.mem[i>>2][(i&3)*8 +: 8]);
       end
 
       $display("Byte random case %0d PASSED addr=%h bytes=%0d AW=%0d AR=%0d",
