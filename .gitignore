@@ -1,0 +1,21 @@
+# Simulation build products
+sim/build/
+sim/log/
+sim/wave/
+sim/simv
+sim/simv.daidir/
+sim/csrc/
+sim/ucli.key
+sim/verdiLog/
+
+# Common simulator outputs
+*.vvp
+*.vcd
+*.vpd
+*.fsdb
+*.log
+
+# Editor and OS files
+*~
+*.swp
+.DS_Store
