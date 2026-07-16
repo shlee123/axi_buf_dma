@@ -7,6 +7,15 @@ specification:
   max_transfer_bytes: 512
   axi_address_width: 32
   axi_data_width: 64
+quality_gates:
+  required:
+    - RTL Regression
+    - Synthesis Check
+  vendor_synthesis:
+    status: manual_until_runner_available
+    preferred_tools:
+      - Vivado synth_design
+      - Synopsys Design Compiler
 stages:
   - id: rtl-byte-datapath
     status: complete
@@ -29,15 +38,26 @@ stages:
   - id: documentation-release
     status: complete
     evidence: PR-19
+  - id: synthesis-hardening
+    status: pending
+    task: .agent/tasks/synthesis-hardening.md
+    acceptance:
+      - buffer_mem has one procedural write owner
+      - timeout counter width is parameter-derived
+      - AXI data-width assumptions are explicit or fully parameterized
+      - no simulation-only construct exists under rtl/
+      - Synthesis Check passes
+      - RTL Regression remains green
   - id: agent-framework
     status: in_progress
     acceptance:
       - roadmap is machine-readable
-      - auto-merge is opt-in and gated by successful RTL Regression
+      - auto-merge is opt-in and gated by RTL Regression and Synthesis Check
       - agent-generated changes use same-repository branches only
       - no pull-request code is executed by the privileged merge workflow
 next_release:
   name: v2.0.0
   required_checks:
     - RTL Regression
+    - Synthesis Check
   merge_method: squash
