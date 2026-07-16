@@ -1,0 +1,26 @@
+name: SRAM Debug
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  byte-addressing:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Icarus Verilog
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq iverilog
+      - name: Run focused byte-addressing test
+        run: |
+          set -o pipefail
+          make -C sim run-byte-addressing 2>&1 | tee /tmp/sram-debug.log
+      - name: Upload focused log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sram-debug-log
+          path: /tmp/sram-debug.log
+          if-no-files-found: error
+          retention-days: 3
