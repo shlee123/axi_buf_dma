@@ -1,3 +1,4 @@
+# Agent Framework changes require the same exact-head RTL regression gate before merge.
 ROOT := ..
 BUILD := build
 SIMV_BYTE := $(BUILD)/tb_axi_buf_dma_byte_addressing.vvp
