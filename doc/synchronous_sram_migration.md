@@ -20,6 +20,17 @@ module axi_buf_dma_buffer #(
 
 Read data is registered and becomes available after the active clock edge for which `csn` is asserted low and `wr_en` is low. The module contains no DMA-specific, host-specific, byte-address, arbitration, or byte-enable behavior.
 
+## Buffer data lifetime rule
+
+Each DMA transfer owns the local-buffer words that it uses. Data left in unused byte lanes of the first or final 32-bit word does not need to be preserved and is treated as don't-care.
+
+Consequences:
+
+- no read-modify-write is required for a partial final word
+- no byte-write-enable interface is required
+- a partial word may be written as a complete 32-bit word with unused byte lanes filled with zero or any deterministic implementation value
+- later software or DMA operations must only consume the byte count programmed for that transfer
+
 ## Controller responsibilities
 
 The DMA controller owns:
@@ -29,7 +40,7 @@ The DMA controller owns:
 - synchronous-read request and wait states
 - assembly of 32-bit SRAM words into 64-bit AXI write beats
 - splitting of AXI read beats into 32-bit SRAM words
-- preservation of unwritten bytes through read-modify-write when a final word is partial
+- construction of a complete 32-bit write word for a partial final payload word without preserving old SRAM contents
 - suppression of host accesses while DMA is busy
 
 ## Required FSM behavior
@@ -42,18 +53,24 @@ The DMA controller owns:
 4. Repeat until the current AXI beat is complete.
 5. Assert `WVALID` with the assembled `WDATA/WSTRB`.
 
+Only the programmed transfer length is valid. Bytes read from SRAM beyond the final payload byte are ignored.
+
 ### AXI to local buffer
 
 1. Latch each accepted AXI read beat.
-2. Accumulate sequential bytes into a 32-bit word staging register.
+2. Accumulate sequential payload bytes into a 32-bit word staging register.
 3. Write complete words directly to SRAM.
-4. For a final partial word, read the existing word, merge valid bytes, then write the merged word.
+4. For a final partial word, fill unused byte lanes with a deterministic value, preferably zero, and perform one normal 32-bit SRAM write.
+
+No existing SRAM data is read or merged for a partial final word.
 
 ## Acceptance criteria
 
 - `axi_buf_dma_buffer` has exactly `clk`, `address`, `wr_en`, `csn`, `din`, and `dout` ports, plus width parameters.
 - No combinational memory read exists.
 - No byte enables exist in the memory module.
+- No read-modify-write operation is used for partial words.
+- Unused byte lanes of a partial word are documented as don't-care and preferably written as zero.
 - The full byte-addressed regression remains passing.
 - Synthesis Check remains passing.
 - Host read timing is documented as synchronous.
