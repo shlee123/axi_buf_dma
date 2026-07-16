@@ -65,14 +65,14 @@ module tb_axi_buf_dma_byte_random;
       aw_bursts <= aw_bursts + 1;
       if (awsize !== 3'd3 || awburst !== 2'b01)
         $fatal(1, "case=%0d invalid AW attributes", case_idx);
-      if ((awaddr[11:0] + ((awlen + 1) << 3)) > 4096)
+      if (({1'b0, awaddr[11:3], 3'b000} + ((awlen + 1) << 3)) > 4096)
         $fatal(1, "case=%0d AW burst crosses 4KB boundary", case_idx);
     end
     if (rst_n && arvalid && arready) begin
       ar_bursts <= ar_bursts + 1;
       if (arsize !== 3'd3 || arburst !== 2'b01)
         $fatal(1, "case=%0d invalid AR attributes", case_idx);
-      if ((araddr[11:0] + ((arlen + 1) << 3)) > 4096)
+      if (({1'b0, araddr[11:3], 3'b000} + ((arlen + 1) << 3)) > 4096)
         $fatal(1, "case=%0d AR burst crosses 4KB boundary", case_idx);
     end
     if (rst_n && wvalid && wready)
