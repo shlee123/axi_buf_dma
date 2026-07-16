@@ -1,0 +1,46 @@
+name: SRAM Directed Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sram-wrapper:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iverilog
+
+      - name: Compile SRAM wrapper test
+        run: |
+          mkdir -p build
+          iverilog -g2012 -Wall \
+            -s tb_axi_buf_dma_buffer \
+            -o build/tb_axi_buf_dma_buffer.vvp \
+            rtl/axi_buf_dma_buffer.sv \
+            tb/tb_axi_buf_dma_buffer.sv
+
+      - name: Run SRAM wrapper test
+        run: |
+          vvp build/tb_axi_buf_dma_buffer.vvp | tee build/sram-directed.log
+          grep -F 'SRAM_WRAPPER_TEST_PASS' build/sram-directed.log
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sram-directed-log
+          path: build/sram-directed.log
+          if-no-files-found: warn
+          retention-days: 7
