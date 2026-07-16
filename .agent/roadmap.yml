@@ -1,0 +1,46 @@
+project: axi_buf_dma
+release: v2.1.0
+status: verification_hardening
+specification:
+  address_unit: byte
+  length_unit: byte
+  max_transfer_bytes: 512
+  axi_address_width: 32
+  axi_data_width: 64
+  local_buffer:
+    organization: 128x32
+    interface: synchronous_single_port
+quality_gates:
+  required:
+    - RTL Regression
+    - Synthesis Check
+  technology_signoff:
+    status: pending_licensed_tool
+    preferred_tools:
+      - Vivado synth_design
+      - Synopsys Design Compiler
+stages:
+  - id: byte-datapath
+    status: complete
+  - id: boundary-backpressure-errors-random
+    status: complete
+  - id: synchronous-sram-buffer
+    status: complete
+    evidence: PR-21
+  - id: open-source-synthesis
+    status: complete
+    evidence: PR-21
+  - id: agent-framework
+    status: in_progress
+    evidence: PR-22
+  - id: coverage-expansion
+    status: pending
+  - id: vendor-synthesis-signoff
+    status: pending
+  - id: release-candidate
+    status: pending
+notifications:
+  verification_complete:
+    recipient: tony_lee@syntronix.com.tw
+    delivery: connected_gmail
+    status: pending_verification_completion
