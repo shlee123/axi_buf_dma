@@ -58,7 +58,7 @@ jobs:
           grep -q 'input  logic.*csn' rtl/axi_buf_dma_buffer.sv
           grep -q 'input  logic.*din' rtl/axi_buf_dma_buffer.sv
           grep -q 'output logic.*dout' rtl/axi_buf_dma_buffer.sv
-          if grep -Eq 'host_|dma_|byte.*enable|strb' rtl/axi_buf_dma_buffer.sv; then
-            echo 'DMA/host-specific or byte-enable signal found in SRAM wrapper.'
+          if grep -Eq '^[[:space:]]*(input|output|inout).*(host_|dma_|byte.*enable|strb)' rtl/axi_buf_dma_buffer.sv; then
+            echo 'DMA/host-specific or byte-enable port found in SRAM wrapper.'
             exit 1
           fi
