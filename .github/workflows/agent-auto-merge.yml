@@ -1,0 +1,57 @@
+name: Agent Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["RTL Regression"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge eligible agent pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          query='state:open base:main label:agent-automerge'
+          mapfile -t prs < <(gh pr list --repo "$REPO" --search "$query" --json number --jq '.[].number')
+
+          for pr in "${prs[@]}"; do
+            data="$(gh pr view "$pr" --repo "$REPO" --json isDraft,mergeable,headRefName,headRepositoryOwner,headRefOid,reviewDecision,statusCheckRollup)"
+
+            draft="$(jq -r '.isDraft' <<<"$data")"
+            mergeable="$(jq -r '.mergeable' <<<"$data")"
+            branch="$(jq -r '.headRefName' <<<"$data")"
+            owner="$(jq -r '.headRepositoryOwner.login' <<<"$data")"
+            sha="$(jq -r '.headRefOid' <<<"$data")"
+            review="$(jq -r '.reviewDecision // ""' <<<"$data")"
+
+            [[ "$draft" == "false" ]] || continue
+            [[ "$mergeable" == "MERGEABLE" ]] || continue
+            [[ "$branch" == agent/* ]] || continue
+            [[ "$owner" == "${REPO%%/*}" ]] || continue
+            [[ "$review" != "CHANGES_REQUESTED" ]] || continue
+
+            if [[ "$EVENT_NAME" == "workflow_run" && "$sha" != "$HEAD_SHA" ]]; then
+              continue
+            fi
+
+            passed="$(jq -r '[.statusCheckRollup[]? | select(.name == "RTL Regression" or .workflowName == "RTL Regression") | (.conclusion // .state)] | any(. == "SUCCESS")' <<<"$data")"
+            [[ "$passed" == "true" ]] || continue
+
+            gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+          done
