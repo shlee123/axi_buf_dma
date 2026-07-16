@@ -27,6 +27,7 @@ RELEASE_DOCS := \
 
 RTL := \
   $(ROOT)/rtl/dma_pkg.sv \
+  $(ROOT)/rtl/axi_buf_dma_buffer.sv \
   $(ROOT)/rtl/axi_buf_dma.sv
 
 TB_BYTE := \

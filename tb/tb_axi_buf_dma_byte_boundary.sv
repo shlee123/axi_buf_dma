@@ -122,7 +122,7 @@ module tb_axi_buf_dma_byte_boundary;
     if (awlen_first != 8'd0 || awlen_second != 8'd62)
       $fatal(1, "Unexpected AWLEN sequence %0d,%0d", awlen_first, awlen_second);
     for (i=0; i<512; i=i+1)
-      if (mem.mem[16'h0FF8+i] !== dut.buffer_mem[i>>2][(i&3)*8 +: 8])
+      if (mem.mem[16'h0FF8+i] !== dut.u_local_buffer.mem[i>>2][(i&3)*8 +: 8])
         $fatal(1, "Write byte mismatch at %0d", i);
 
     for (i=0; i<512; i=i+1)
@@ -139,7 +139,7 @@ module tb_axi_buf_dma_byte_boundary;
     if (arlen_first != 8'd0 || arlen_second != 8'd62)
       $fatal(1, "Unexpected ARLEN sequence %0d,%0d", arlen_first, arlen_second);
     for (i=0; i<512; i=i+1)
-      if (dut.buffer_mem[i>>2][(i&3)*8 +: 8] !== (8'h40 + i[7:0]))
+      if (dut.u_local_buffer.mem[i>>2][(i&3)*8 +: 8] !== (8'h40 + i[7:0]))
         $fatal(1, "Read byte mismatch at %0d", i);
 
     $display("512-byte 4KB boundary regression PASSED");

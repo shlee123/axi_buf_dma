@@ -156,7 +156,7 @@ module tb_axi_buf_dma_byte_addressing;
     if (ar_count != 1)
       $fatal(1, "Expected one AR burst, got %0d", ar_count);
     for (i = 0; i < 12; i = i + 1)
-      if (dut.buffer_mem[i>>2][(i&3)*8 +: 8] !== (8'h80 + i[7:0]))
+      if (dut.u_local_buffer.mem[i>>2][(i&3)*8 +: 8] !== (8'h80 + i[7:0]))
         $fatal(1, "Read byte mismatch index=%0d", i);
 
     $display("Byte-length and byte-aligned DMA regression PASSED");

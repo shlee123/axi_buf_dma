@@ -1,0 +1,64 @@
+name: Synthesis Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthesis-check:
+    name: Synthesis Check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install open-source RTL tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iverilog verilator
+
+      - name: Reject simulation-only constructs in RTL
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden='(^|[^[:alnum:]_])(initial|final|fork|join|join_any|join_none|wait|force|release|mailbox|semaphore|class|program|clocking)([^[:alnum:]_]|$)|#[[:space:]]*[0-9]|\$(display|write|monitor|finish|stop|fatal|error|warning|readmem|writemem)|DPI-C'
+          if grep -RInE --include='*.sv' --include='*.v' "$forbidden" rtl; then
+            echo "Simulation-only construct found under rtl/."
+            exit 1
+          fi
+
+      - name: SystemVerilog elaboration
+        run: |
+          iverilog -g2012 -Wall -s axi_buf_dma -t null \
+            rtl/dma_pkg.sv \
+            rtl/axi_buf_dma_buffer.sv \
+            rtl/axi_buf_dma.sv
+
+      - name: Verilator synthesis-oriented lint
+        run: |
+          verilator --lint-only --sv --Wall -Wno-fatal \
+            --top-module axi_buf_dma \
+            rtl/dma_pkg.sv \
+            rtl/axi_buf_dma_buffer.sv \
+            rtl/axi_buf_dma.sv
+
+      - name: SRAM interface contract check
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'input  logic.*clk' rtl/axi_buf_dma_buffer.sv
+          grep -q 'input  logic.*address' rtl/axi_buf_dma_buffer.sv
+          grep -q 'input  logic.*wr_en' rtl/axi_buf_dma_buffer.sv
+          grep -q 'input  logic.*csn' rtl/axi_buf_dma_buffer.sv
+          grep -q 'input  logic.*din' rtl/axi_buf_dma_buffer.sv
+          grep -q 'output logic.*dout' rtl/axi_buf_dma_buffer.sv
+          if grep -Eq '^[[:space:]]*(input|output|inout).*(host_|dma_|byte.*enable|strb)' rtl/axi_buf_dma_buffer.sv; then
+            echo 'DMA/host-specific or byte-enable port found in SRAM wrapper.'
+            exit 1
+          fi

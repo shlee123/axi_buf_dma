@@ -65,7 +65,23 @@ module axi_memory_model #(
   integer unsigned r_gap_count;
   integer unsigned bvalid_delay_count;
   integer unsigned rvalid_delay_count;
-  integer i;
+  integer write_i;
+  integer read_i;
+  integer init_i;
+
+  function automatic [7:0] safe_mem_read(input logic [ADDR_WIDTH-1:0] addr);
+    begin
+      if ((addr < MEM_BYTES) && !$isunknown(mem[addr]))
+        safe_mem_read = mem[addr];
+      else
+        safe_mem_read = 8'h00;
+    end
+  endfunction
+
+  initial begin
+    for (init_i = 0; init_i < MEM_BYTES; init_i = init_i + 1)
+      mem[init_i] = 8'h00;
+  end
 
   assign s_axi_awready = !write_active && !s_axi_bvalid && !write_response_pending &&
                          (!s_axi_awvalid || (aw_wait_count >= AW_STALL_CYCLES));
@@ -115,7 +131,6 @@ module axi_memory_model #(
       end
 
       if (s_axi_awvalid && s_axi_awready) begin
-        // AXI unaligned transfer data lanes are referenced to the aligned bus word.
         write_addr       <= {s_axi_awaddr[ADDR_WIDTH-1:3], 3'b000};
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
@@ -123,9 +138,9 @@ module axi_memory_model #(
       end
 
       if (s_axi_wvalid && s_axi_wready) begin
-        for (i = 0; i < DATA_BYTES; i = i + 1)
-          if (s_axi_wstrb[i])
-            mem[write_addr + i] <= s_axi_wdata[i*8 +: 8];
+        for (write_i = 0; write_i < DATA_BYTES; write_i = write_i + 1)
+          if (s_axi_wstrb[write_i])
+            mem[write_addr + write_i] <= s_axi_wdata[write_i*8 +: 8];
 
         write_addr       <= write_addr + (1 << s_axi_awsize);
         write_beats_left <= write_beats_left - 1'b1;
@@ -174,8 +189,8 @@ module axi_memory_model #(
 
       if (read_active && !s_axi_rvalid &&
           (r_gap_count == 0) && (rvalid_delay_count == 0)) begin
-        for (i = 0; i < DATA_BYTES; i = i + 1)
-          s_axi_rdata[i*8 +: 8] <= mem[read_addr + i];
+        for (read_i = 0; read_i < DATA_BYTES; read_i = read_i + 1)
+          s_axi_rdata[read_i*8 +: 8] <= safe_mem_read(read_addr + read_i);
 
         case (RLAST_MODE)
           RLAST_EARLY:   s_axi_rlast <= (read_beats_left == 2);

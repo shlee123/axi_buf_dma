@@ -1,0 +1,27 @@
+name: Synthesis Check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  generic-synthesis:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install synthesis tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iverilog yosys
+      - name: Elaborate and synthesize
+        run: make -C synth all
+      - name: Upload synthesis log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthesis-log
+          path: synth/build/yosys.log
+          if-no-files-found: warn
+          retention-days: 7
