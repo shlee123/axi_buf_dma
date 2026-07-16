@@ -20,12 +20,27 @@ AXI Buffer DMA is a synthesizable DMA controller that transfers byte streams bet
 
 - `rtl/` - synthesizable DMA RTL
 - `tb/` - testbenches, AXI memory model, and protocol checker
-- `sim/` - regression makefiles and simulation flow
+- `sim/Makefile` - simulation and regression entry point
+- `sim/filelist/` - simulator file lists when external file lists are required
+- `sim/scripts/` - simulator-specific helper scripts
+- `sim/build/` - generated simulation executables and intermediate files (ignored)
+- `sim/log/` - generated simulation logs (ignored)
+- `sim/wave/` - generated waveform files (ignored)
 - `doc/architecture.md` - block architecture and transfer model
 - `doc/design.md` - detailed channel and burst behavior
 - `doc/verification.md` - verification strategy and pass criteria
 - `doc/programmer_guide.md` - software programming sequence
 - `RELEASE_NOTES.md` - V2 compatibility and release summary
+
+The repository root intentionally has no Makefile. Run simulation targets from the root with:
+
+```sh
+make -C sim regression
+make -C sim run
+make -C sim clean
+```
+
+Alternatively, enter `sim/` first and invoke the same targets directly.
 
 ## Byte-based programming model
 
