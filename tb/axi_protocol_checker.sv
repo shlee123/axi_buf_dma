@@ -40,10 +40,11 @@ module axi_protocol_checker #(
   logic [7:0] awlen_q, arlen_q;
   logic [2:0] awsize_q, arsize_q;
   logic [1:0] awburst_q, arburst_q;
-  logic [DATA_WIDTH-1:0] wdata_q;
+  logic [DATA_WIDTH-1:0] wdata_q, rdata_q;
   logic [STRB_WIDTH-1:0] wstrb_q;
-  logic wlast_q;
-  logic aw_stalled_q, ar_stalled_q, w_stalled_q;
+  logic [1:0] rresp_q;
+  logic wlast_q, rlast_q;
+  logic aw_stalled_q, ar_stalled_q, w_stalled_q, r_stalled_q;
   logic write_active, read_active;
 
   integer unsigned write_beat_count;
@@ -85,6 +86,7 @@ module axi_protocol_checker #(
       aw_stalled_q <= 1'b0;
       ar_stalled_q <= 1'b0;
       w_stalled_q  <= 1'b0;
+      r_stalled_q  <= 1'b0;
       write_beat_count <= 0;
       expected_write_beats <= 0;
       read_beat_count <= 0;
@@ -107,10 +109,16 @@ module axi_protocol_checker #(
         assert ({wdata,wstrb,wlast} == {wdata_q,wstrb_q,wlast_q})
           else $fatal(1, "W payload changed while stalled");
       end
+      if (r_stalled_q) begin
+        assert (rvalid) else $fatal(1, "RVALID dropped before RREADY");
+        assert ({rdata,rresp,rlast} === {rdata_q,rresp_q,rlast_q})
+          else $fatal(1, "R payload changed while stalled");
+      end
 
       aw_stalled_q <= awvalid && !awready;
       ar_stalled_q <= arvalid && !arready;
       w_stalled_q  <= wvalid && !wready;
+      r_stalled_q  <= rvalid && !rready;
       if (awvalid && !awready) begin
         awaddr_q <= awaddr; awlen_q <= awlen; awsize_q <= awsize; awburst_q <= awburst;
       end
@@ -119,6 +127,9 @@ module axi_protocol_checker #(
       end
       if (wvalid && !wready) begin
         wdata_q <= wdata; wstrb_q <= wstrb; wlast_q <= wlast;
+      end
+      if (rvalid && !rready) begin
+        rdata_q <= rdata; rresp_q <= rresp; rlast_q <= rlast;
       end
 
       if (awvalid && awready) begin
@@ -169,11 +180,6 @@ module axi_protocol_checker #(
           assert ((read_beat_count + 1) < expected_read_beats)
             else $fatal(1, "Missing RLAST on final beat");
         end
-      end
-
-      if (rvalid && !rready) begin
-        assert (!$isunknown({rdata,rresp,rlast}))
-          else $fatal(1, "Read payload contains unknown values while stalled");
       end
     end
   end
