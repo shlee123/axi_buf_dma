@@ -1,0 +1,43 @@
+project: axi_buf_dma
+release: v2.0.0
+status: release_candidate
+specification:
+  address_unit: byte
+  length_unit: byte
+  max_transfer_bytes: 512
+  axi_address_width: 32
+  axi_data_width: 64
+stages:
+  - id: rtl-byte-datapath
+    status: complete
+    evidence: PR-13
+  - id: byte-boundary-regression
+    status: complete
+    evidence: PR-14
+  - id: byte-backpressure
+    status: complete
+    evidence: PR-15
+  - id: byte-error-timeout
+    status: complete
+    evidence: PR-16
+  - id: byte-random-regression
+    status: complete
+    evidence: PR-17
+  - id: axi-assertions
+    status: complete
+    evidence: PR-18
+  - id: documentation-release
+    status: complete
+    evidence: PR-19
+  - id: agent-framework
+    status: in_progress
+    acceptance:
+      - roadmap is machine-readable
+      - auto-merge is opt-in and gated by successful RTL Regression
+      - agent-generated changes use same-repository branches only
+      - no pull-request code is executed by the privileged merge workflow
+next_release:
+  name: v2.0.0
+  required_checks:
+    - RTL Regression
+  merge_method: squash
