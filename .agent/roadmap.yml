@@ -31,7 +31,7 @@ stages:
     status: complete
     evidence: PR-21
   - id: agent-framework
-    status: in_progress
+    status: complete
     evidence: PR-22
   - id: coverage-expansion
     status: pending
