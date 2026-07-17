@@ -16,7 +16,7 @@ VERDI_HOME ?=
 # failures are not hidden by a successful tee process.
 SIM_SHELL_VARS := \
 	SHELL=/bin/bash \
-	'.SHELLFLAGS=-o pipefail -c'
+	.SHELLFLAGS=-o\ pipefail\ -c
 
 SIM_VARS := \
 	SIM=$(SIM) \
