@@ -7,6 +7,10 @@ on:
       - 'tb/**'
       - 'sim/**'
       - 'synth/**'
+      - 'doc/**'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - '.agent/**'
       - '.github/workflows/rtl-sim.yml'
   push:
     branches:
@@ -16,6 +20,10 @@ on:
       - 'tb/**'
       - 'sim/**'
       - 'synth/**'
+      - 'doc/**'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - '.agent/**'
       - '.github/workflows/rtl-sim.yml'
 
 jobs:

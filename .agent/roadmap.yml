@@ -1,6 +1,6 @@
 project: axi_buf_dma
 release: v2.1.0
-status: verification_hardening
+status: release_candidate_preparation
 specification:
   address_unit: byte
   length_unit: byte
@@ -14,6 +14,8 @@ quality_gates:
   required:
     - RTL Regression
     - Synthesis Check
+    - SRAM Directed Test
+    - Coverage Random Regression
   technology_signoff:
     status: pending_licensed_tool
     preferred_tools:
@@ -26,21 +28,27 @@ stages:
     status: complete
   - id: synchronous-sram-buffer
     status: complete
-    evidence: PR-21
+    evidence: PR-24
+  - id: sram-specific-verification
+    status: complete
+    evidence: PR-24
   - id: open-source-synthesis
     status: complete
-    evidence: PR-21
   - id: agent-framework
-    status: in_progress
+    status: complete
     evidence: PR-22
   - id: coverage-expansion
-    status: pending
+    status: complete
+    evidence: PR-26
+  - id: vendor-synthesis-scripts
+    status: complete
+    evidence: PR-27
   - id: vendor-synthesis-signoff
-    status: pending
+    status: blocked_pending_licensed_tool_and_target_constraints
   - id: release-candidate
-    status: pending
+    status: in_progress
 notifications:
   verification_complete:
     recipient: tony_lee@syntronix.com.tw
     delivery: connected_gmail
-    status: pending_verification_completion
+    status: pending_release_candidate_acceptance
