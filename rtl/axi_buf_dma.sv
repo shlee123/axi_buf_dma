@@ -137,7 +137,10 @@ module axi_buf_dma #(
   assign dma_irq = (irq_done_status & irq_done_enable) |
                    (irq_error_status & irq_error_enable);
 
-  always_comb begin
+  // Use always @* rather than always_comb for combinational logic that contains
+  // constant/part selects. This preserves combinational behavior while avoiding
+  // the known Icarus elaboration diagnostic that expands sensitivity to all bits.
+  always @* begin
     lane_start = (beat_index == 0) ? {1'b0, current_addr[2:0]} : 4'd0;
     if (remaining_bytes < (AXI_BYTES - lane_start))
       bytes_this_beat = remaining_bytes[3:0];
@@ -146,7 +149,7 @@ module axi_buf_dma #(
   end
 
   integer strb_lane;
-  always_comb begin
+  always @* begin
     packed_wstrb = '0;
     for (strb_lane = 0; strb_lane < AXI_BYTES; strb_lane = strb_lane + 1)
       if ((strb_lane >= lane_start) && ((strb_lane-lane_start) < bytes_this_beat))
@@ -156,20 +159,20 @@ module axi_buf_dma #(
   assign w_source_byte_index = buffer_byte_index + w_load_count;
   assign sram_read_byte = sram_dout[w_source_byte_index[1:0]*8 +: 8];
 
-  always_comb begin
+  always @* begin
     wdata_with_byte = wdata_stage;
     wdata_with_byte[(lane_start+w_load_count)*8 +: 8] = sram_read_byte;
   end
 
   assign current_r_byte = rdata_reg[(r_lane_start+r_payload_index)*8 +: 8];
-  always_comb begin
+  always @* begin
     read_word_with_byte = (buffer_byte_index[1:0] == 2'd0) ? 32'd0 : read_word_stage;
     read_word_with_byte[buffer_byte_index[1:0]*8 +: 8] = current_r_byte;
     r_word_write = (state == DMA_R_UNPACK) &&
                    ((buffer_byte_index[1:0] == 2'd3) || (remaining_bytes == 10'd1));
   end
 
-  always_comb begin
+  always @* begin
     sram_address = buf_addr;
     sram_wr_en = buf_wr_en;
     sram_csn = buf_csn;
@@ -192,7 +195,7 @@ module axi_buf_dma #(
     end
   end
 
-  always_comb begin
+  always @* begin
     m_axi_awaddr  = current_addr;
     m_axi_awlen   = burst_beats - 1'b1;
     m_axi_awsize  = 3'b011;
@@ -211,7 +214,7 @@ module axi_buf_dma #(
     m_axi_rready  = (state == DMA_R_DATA);
   end
 
-  always_comb begin
+  always @* begin
     wait_state = 1'b0;
     forward_progress = 1'b0;
     case (state)
