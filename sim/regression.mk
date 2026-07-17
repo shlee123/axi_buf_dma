@@ -1,5 +1,8 @@
 # Directed and regression targets.
 
+REGRESSION_BUILD ?= build/regression
+REGRESSION_SUMMARY ?= $(REGRESSION_BUILD)/summary.txt
+
 .PHONY: regression legacy-regression release-check \
         run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random \
         run-byte-error run-byte-errors run-basic run-boundary run-read-boundary \
@@ -33,7 +36,8 @@ run-byte-error:
 run-byte-errors:
 	@set -e; for kind in 1 2 3 4 5 6; do $(MAKE) --no-print-directory run-byte-error TEST_KIND=$$kind; done
 
-regression: release-check run-byte-addressing run-byte-backpressure run-byte-boundary run-byte-random run-byte-errors
+regression: release-check
+	@BUILD_DIR="$(REGRESSION_BUILD)" SUMMARY="$(REGRESSION_SUMMARY)" SEED="$(SEED)" bash ./regression.sh
 
 run-basic:
 	@$(MAKE) --no-print-directory sim SIM=iverilog TEST=basic
