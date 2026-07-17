@@ -38,3 +38,28 @@ jobs:
 
       - name: Byte-length and unaligned-address regression
         run: make -C sim clean regression
+
+      - name: Publish regression summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f sim/build/regression/summary.txt ]]; then
+            {
+              echo '## AXI Buffer DMA Regression'
+              echo '```text'
+              cat sim/build/regression/summary.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '## AXI Buffer DMA Regression' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Regression summary was not generated.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload regression reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl-regression-${{ github.sha }}
+          path: sim/build/regression/
+          if-no-files-found: error
+          retention-days: 14
