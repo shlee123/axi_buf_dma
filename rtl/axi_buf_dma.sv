@@ -1,8 +1,22 @@
 `timescale 1ns/1ps
 
+// AXI protection defaults are compile-time configurable.
+// AXPROT[0]: 0=unprivileged, 1=privileged
+// AXPROT[1]: 0=secure,       1=non-secure
+// AXPROT[2]: 0=data,         1=instruction
+`ifndef AXI_DMA_AWPROT
+  `define AXI_DMA_AWPROT 3'b000
+`endif
+
+`ifndef AXI_DMA_ARPROT
+  `define AXI_DMA_ARPROT 3'b000
+`endif
+
 module axi_buf_dma #(
   parameter int unsigned AXI_ADDR_WIDTH     = 32,
   parameter int unsigned AXI_DATA_WIDTH     = 64,
+  parameter int unsigned AXI_ID_WIDTH       = 6,
+  parameter logic [AXI_ID_WIDTH-1:0] AXI_ID_VALUE = '0,
   parameter int unsigned BUFFER_ADDR_WIDTH  = 7,
   parameter int unsigned AXI_MAX_BURST_LEN  = 64,
   parameter int unsigned AXI_TIMEOUT_CYCLES = 1024
@@ -30,10 +44,12 @@ module axi_buf_dma #(
   output logic [31:0]                  buf_dout,
   input  logic                         buf_wr_en,
   input  logic                         buf_csn,
+  output logic [AXI_ID_WIDTH-1:0]      m_axi_awid,
   output logic [AXI_ADDR_WIDTH-1:0]    m_axi_awaddr,
   output logic [7:0]                   m_axi_awlen,
   output logic [2:0]                   m_axi_awsize,
   output logic [1:0]                   m_axi_awburst,
+  output logic [2:0]                   m_axi_awprot,
   output logic                         m_axi_awvalid,
   input  logic                         m_axi_awready,
   output logic [AXI_DATA_WIDTH-1:0]    m_axi_wdata,
@@ -41,15 +57,19 @@ module axi_buf_dma #(
   output logic                         m_axi_wlast,
   output logic                         m_axi_wvalid,
   input  logic                         m_axi_wready,
+  input  logic [AXI_ID_WIDTH-1:0]      m_axi_bid,
   input  logic [1:0]                   m_axi_bresp,
   input  logic                         m_axi_bvalid,
   output logic                         m_axi_bready,
+  output logic [AXI_ID_WIDTH-1:0]      m_axi_arid,
   output logic [AXI_ADDR_WIDTH-1:0]    m_axi_araddr,
   output logic [7:0]                   m_axi_arlen,
   output logic [2:0]                   m_axi_arsize,
   output logic [1:0]                   m_axi_arburst,
+  output logic [2:0]                   m_axi_arprot,
   output logic                         m_axi_arvalid,
   input  logic                         m_axi_arready,
+  input  logic [AXI_ID_WIDTH-1:0]      m_axi_rid,
   input  logic [AXI_DATA_WIDTH-1:0]    m_axi_rdata,
   input  logic [1:0]                   m_axi_rresp,
   input  logic                         m_axi_rlast,
@@ -137,6 +157,11 @@ module axi_buf_dma #(
   assign dma_irq = (irq_done_status & irq_done_enable) |
                    (irq_error_status & irq_error_enable);
 
+  // This DMA currently permits only one outstanding transaction, so AWID and
+  // ARID use one fixed configurable value. BID/RID are exposed for complete
+  // AXI connectivity; response-ID checking is intentionally deferred until
+  // multiple outstanding transactions are supported.
+
   // Use always @* rather than always_comb for combinational logic that contains
   // constant/part selects. This preserves combinational behavior while avoiding
   // the known Icarus elaboration diagnostic that expands sensitivity to all bits.
@@ -196,20 +221,24 @@ module axi_buf_dma #(
   end
 
   always @* begin
+    m_axi_awid    = AXI_ID_VALUE;
     m_axi_awaddr  = current_addr;
     m_axi_awlen   = burst_beats - 1'b1;
     m_axi_awsize  = 3'b011;
     m_axi_awburst = 2'b01;
+    m_axi_awprot  = `AXI_DMA_AWPROT;
     m_axi_awvalid = (state == DMA_W_AW);
     m_axi_wdata   = wdata_reg;
     m_axi_wstrb   = wstrb_reg;
     m_axi_wlast   = wlast_reg;
     m_axi_wvalid  = (state == DMA_W_SEND);
     m_axi_bready  = (state == DMA_W_RESP);
+    m_axi_arid    = AXI_ID_VALUE;
     m_axi_araddr  = current_addr;
     m_axi_arlen   = burst_beats - 1'b1;
     m_axi_arsize  = 3'b011;
     m_axi_arburst = 2'b01;
+    m_axi_arprot  = `AXI_DMA_ARPROT;
     m_axi_arvalid = (state == DMA_R_AR);
     m_axi_rready  = (state == DMA_R_DATA);
   end
