@@ -48,6 +48,17 @@ jobs:
             rtl/axi_buf_dma_buffer.sv \
             rtl/axi_buf_dma.sv
 
+      - name: AXI ID and PROT smoke test
+        run: |
+          mkdir -p build
+          iverilog -g2012 -Wall -s tb_axi_buf_dma -o build/tb_axi_buf_dma.vvp \
+            rtl/dma_pkg.sv \
+            rtl/axi_buf_dma_buffer.sv \
+            rtl/axi_buf_dma.sv \
+            tb/axi_memory_model.sv \
+            tb/tb_axi_buf_dma.sv
+          vvp build/tb_axi_buf_dma.vvp
+
       - name: SRAM interface contract check
         shell: bash
         run: |
