@@ -57,7 +57,7 @@ jobs:
             rtl/axi_buf_dma.sv \
             tb/axi_memory_model.sv \
             tb/tb_axi_buf_dma.sv
-          vvp build/tb_axi_buf_dma.vvp
+          timeout 30s vvp build/tb_axi_buf_dma.vvp
 
       - name: SRAM interface contract check
         shell: bash

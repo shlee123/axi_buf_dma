@@ -24,42 +24,50 @@ module tb_axi_buf_dma_byte_error #(
   logic buf_wr_en, buf_csn;
   logic [31:0] awaddr, araddr;
   logic [7:0] awlen, arlen;
-  logic [2:0] awsize, arsize;
+  logic [2:0] awsize, arsize, awprot, arprot;
   logic [1:0] awburst, arburst;
   logic awvalid, awready, arvalid, arready;
   logic [63:0] wdata, rdata;
   logic [7:0] wstrb;
   logic wlast, wvalid, wready;
+  logic [5:0] awid, bid, arid, rid;
   logic [1:0] bresp, rresp;
   logic bvalid, bready, rlast, rvalid, rready;
 
   always #5 clk = ~clk;
 
-  axi_buf_dma #(.AXI_TIMEOUT_CYCLES(16)) dut (.*,
-    .m_axi_awaddr(awaddr), .m_axi_awlen(awlen), .m_axi_awsize(awsize),
-    .m_axi_awburst(awburst), .m_axi_awvalid(awvalid), .m_axi_awready(awready),
+  axi_buf_dma #(.AXI_TIMEOUT_CYCLES(16)) dut (
+    .*,
+    .m_axi_awid(awid), .m_axi_awaddr(awaddr), .m_axi_awlen(awlen),
+    .m_axi_awsize(awsize), .m_axi_awburst(awburst), .m_axi_awprot(awprot),
+    .m_axi_awvalid(awvalid), .m_axi_awready(awready),
     .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),
-    .m_axi_wvalid(wvalid), .m_axi_wready(wready), .m_axi_bresp(bresp),
-    .m_axi_bvalid(bvalid), .m_axi_bready(bready), .m_axi_araddr(araddr),
-    .m_axi_arlen(arlen), .m_axi_arsize(arsize), .m_axi_arburst(arburst),
-    .m_axi_arvalid(arvalid), .m_axi_arready(arready), .m_axi_rdata(rdata),
-    .m_axi_rresp(rresp), .m_axi_rlast(rlast), .m_axi_rvalid(rvalid),
-    .m_axi_rready(rready));
+    .m_axi_wvalid(wvalid), .m_axi_wready(wready),
+    .m_axi_bid(bid), .m_axi_bresp(bresp), .m_axi_bvalid(bvalid), .m_axi_bready(bready),
+    .m_axi_arid(arid), .m_axi_araddr(araddr), .m_axi_arlen(arlen),
+    .m_axi_arsize(arsize), .m_axi_arburst(arburst), .m_axi_arprot(arprot),
+    .m_axi_arvalid(arvalid), .m_axi_arready(arready),
+    .m_axi_rid(rid), .m_axi_rdata(rdata), .m_axi_rresp(rresp),
+    .m_axi_rlast(rlast), .m_axi_rvalid(rvalid), .m_axi_rready(rready)
+  );
 
   axi_memory_model #(
     .BRESP_VALUE(BRESP_CFG), .RRESP_VALUE(RRESP_CFG), .RLAST_MODE(RLAST_CFG),
     .BVALID_DELAY(BDELAY_CFG), .RVALID_DELAY(RDELAY_CFG)
   ) mem (
     .clk, .rst_n,
-    .s_axi_awaddr(awaddr), .s_axi_awlen(awlen), .s_axi_awsize(awsize),
-    .s_axi_awburst(awburst), .s_axi_awvalid(awvalid), .s_axi_awready(awready),
+    .s_axi_awid(awid), .s_axi_awaddr(awaddr), .s_axi_awlen(awlen),
+    .s_axi_awsize(awsize), .s_axi_awburst(awburst), .s_axi_awprot(awprot),
+    .s_axi_awvalid(awvalid), .s_axi_awready(awready),
     .s_axi_wdata(wdata), .s_axi_wstrb(wstrb), .s_axi_wlast(wlast),
-    .s_axi_wvalid(wvalid), .s_axi_wready(wready), .s_axi_bresp(bresp),
-    .s_axi_bvalid(bvalid), .s_axi_bready(bready), .s_axi_araddr(araddr),
-    .s_axi_arlen(arlen), .s_axi_arsize(arsize), .s_axi_arburst(arburst),
-    .s_axi_arvalid(arvalid), .s_axi_arready(arready), .s_axi_rdata(rdata),
-    .s_axi_rresp(rresp), .s_axi_rlast(rlast), .s_axi_rvalid(rvalid),
-    .s_axi_rready(rready));
+    .s_axi_wvalid(wvalid), .s_axi_wready(wready),
+    .s_axi_bid(bid), .s_axi_bresp(bresp), .s_axi_bvalid(bvalid), .s_axi_bready(bready),
+    .s_axi_arid(arid), .s_axi_araddr(araddr), .s_axi_arlen(arlen),
+    .s_axi_arsize(arsize), .s_axi_arburst(arburst), .s_axi_arprot(arprot),
+    .s_axi_arvalid(arvalid), .s_axi_arready(arready),
+    .s_axi_rid(rid), .s_axi_rdata(rdata), .s_axi_rresp(rresp),
+    .s_axi_rlast(rlast), .s_axi_rvalid(rvalid), .s_axi_rready(rready)
+  );
 
   task automatic buffer_write(input logic [6:0] addr, input logic [31:0] data);
     begin
@@ -71,7 +79,6 @@ module tb_axi_buf_dma_byte_error #(
   task automatic start_dma(input logic direction);
     integer cycles;
     begin
-      // V2 LENGTH is programmed as byte_count - 1. 9'd15 requests 16 bytes.
       @(negedge clk); dma_start=0; dma_sa=32'h0000_0100; dma_length=9'd15; dma_rw=direction;
       @(negedge clk); dma_start=1;
       cycles = 0;

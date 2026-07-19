@@ -1,6 +1,18 @@
 `timescale 1ns/1ps
 
 module tb_axi_buf_dma_read_boundary;
+  // AXI ID/PROT wildcard compatibility signals
+  logic [5:0] m_axi_awid, m_axi_bid, m_axi_arid, m_axi_rid;
+  logic [2:0] m_axi_awprot, m_axi_arprot;
+  logic [5:0] s_axi_awid, s_axi_bid, s_axi_arid, s_axi_rid;
+  logic [2:0] s_axi_awprot, s_axi_arprot;
+  assign s_axi_awid = m_axi_awid;
+  assign s_axi_awprot = m_axi_awprot;
+  assign m_axi_bid = s_axi_bid;
+  assign s_axi_arid = m_axi_arid;
+  assign s_axi_arprot = m_axi_arprot;
+  assign m_axi_rid = s_axi_rid;
+
   logic clk = 0, rst_n = 0;
   logic [31:0] dma_sa;
   logic [6:0] dma_length;
