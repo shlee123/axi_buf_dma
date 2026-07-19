@@ -3,24 +3,27 @@
 module axi_memory_model #(
   parameter int unsigned ADDR_WIDTH        = 32,
   parameter int unsigned DATA_WIDTH        = 64,
+  parameter int unsigned ID_WIDTH          = 6,
   parameter int unsigned MEM_BYTES         = 65536,
   parameter int unsigned AW_STALL_CYCLES   = 0,
   parameter int unsigned W_STALL_EVERY     = 0,
   parameter int unsigned W_STALL_CYCLES    = 0,
   parameter int unsigned AR_STALL_CYCLES   = 0,
   parameter int unsigned R_GAP_CYCLES      = 0,
-  parameter logic [1:0]  BRESP_VALUE        = 2'b00,
-  parameter logic [1:0]  RRESP_VALUE        = 2'b00,
-  parameter int unsigned RLAST_MODE         = 0,
-  parameter int unsigned BVALID_DELAY       = 0,
-  parameter int unsigned RVALID_DELAY       = 0
+  parameter logic [1:0]  BRESP_VALUE       = 2'b00,
+  parameter logic [1:0]  RRESP_VALUE       = 2'b00,
+  parameter int unsigned RLAST_MODE        = 0,
+  parameter int unsigned BVALID_DELAY      = 0,
+  parameter int unsigned RVALID_DELAY      = 0
 ) (
   input  logic                       clk,
   input  logic                       rst_n,
+  input  logic [ID_WIDTH-1:0]        s_axi_awid,
   input  logic [ADDR_WIDTH-1:0]      s_axi_awaddr,
   input  logic [7:0]                 s_axi_awlen,
   input  logic [2:0]                 s_axi_awsize,
   input  logic [1:0]                 s_axi_awburst,
+  input  logic [2:0]                 s_axi_awprot,
   input  logic                       s_axi_awvalid,
   output logic                       s_axi_awready,
   input  logic [DATA_WIDTH-1:0]      s_axi_wdata,
@@ -28,15 +31,19 @@ module axi_memory_model #(
   input  logic                       s_axi_wlast,
   input  logic                       s_axi_wvalid,
   output logic                       s_axi_wready,
+  output logic [ID_WIDTH-1:0]        s_axi_bid,
   output logic [1:0]                 s_axi_bresp,
   output logic                       s_axi_bvalid,
   input  logic                       s_axi_bready,
+  input  logic [ID_WIDTH-1:0]        s_axi_arid,
   input  logic [ADDR_WIDTH-1:0]      s_axi_araddr,
   input  logic [7:0]                 s_axi_arlen,
   input  logic [2:0]                 s_axi_arsize,
   input  logic [1:0]                 s_axi_arburst,
+  input  logic [2:0]                 s_axi_arprot,
   input  logic                       s_axi_arvalid,
   output logic                       s_axi_arready,
+  output logic [ID_WIDTH-1:0]        s_axi_rid,
   output logic [DATA_WIDTH-1:0]      s_axi_rdata,
   output logic [1:0]                 s_axi_rresp,
   output logic                       s_axi_rlast,
@@ -113,6 +120,7 @@ module axi_memory_model #(
       write_beats_left       <= '0;
       write_active           <= 1'b0;
       write_response_pending <= 1'b0;
+      s_axi_bid              <= '0;
       s_axi_bvalid           <= 1'b0;
       w_beat_count           <= 0;
       w_stall_count          <= 0;
@@ -134,6 +142,7 @@ module axi_memory_model #(
         write_addr       <= {s_axi_awaddr[ADDR_WIDTH-1:3], 3'b000};
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
+        s_axi_bid        <= s_axi_awid;
         w_beat_count     <= 0;
       end
 
@@ -168,6 +177,7 @@ module axi_memory_model #(
       read_addr          <= '0;
       read_beats_left    <= '0;
       read_active        <= 1'b0;
+      s_axi_rid          <= '0;
       s_axi_rvalid       <= 1'b0;
       s_axi_rdata        <= '0;
       s_axi_rlast        <= 1'b0;
@@ -183,6 +193,7 @@ module axi_memory_model #(
         read_addr          <= {s_axi_araddr[ADDR_WIDTH-1:3], 3'b000};
         read_beats_left    <= s_axi_arlen + 1'b1;
         read_active        <= 1'b1;
+        s_axi_rid          <= s_axi_arid;
         r_gap_count        <= 0;
         rvalid_delay_count <= RVALID_DELAY;
       end
@@ -213,5 +224,10 @@ module axi_memory_model #(
       end
     end
   end
+
+  // PROT is accepted and observable by testbenches. The memory behavior is
+  // intentionally identical for all protection attributes.
+  logic unused_prot;
+  assign unused_prot = ^{s_axi_awprot, s_axi_arprot, s_axi_awburst, s_axi_arburst};
 
 endmodule
