@@ -2,11 +2,16 @@
 
 module tb_axi_buf_dma;
 
+  localparam int unsigned AXI_ID_WIDTH = 6;
+  localparam logic [AXI_ID_WIDTH-1:0] TEST_AXI_ID = 6'h15;
+  localparam logic [2:0] EXPECTED_AWPROT = 3'b000;
+  localparam logic [2:0] EXPECTED_ARPROT = 3'b000;
+
   logic clk;
   logic rst_n;
 
   logic [31:0] dma_sa;
-  logic [6:0]  dma_length;
+  logic [8:0]  dma_length;
   logic        dma_rw;
   logic        dma_start;
   logic        dma_ready;
@@ -29,10 +34,12 @@ module tb_axi_buf_dma;
   logic        buf_wr_en;
   logic        buf_csn;
 
+  logic [AXI_ID_WIDTH-1:0] awid;
   logic [31:0] awaddr;
   logic [7:0]  awlen;
   logic [2:0]  awsize;
   logic [1:0]  awburst;
+  logic [2:0]  awprot;
   logic        awvalid;
   logic        awready;
   logic [63:0] wdata;
@@ -40,15 +47,19 @@ module tb_axi_buf_dma;
   logic        wlast;
   logic        wvalid;
   logic        wready;
+  logic [AXI_ID_WIDTH-1:0] bid;
   logic [1:0]  bresp;
   logic        bvalid;
   logic        bready;
+  logic [AXI_ID_WIDTH-1:0] arid;
   logic [31:0] araddr;
   logic [7:0]  arlen;
   logic [2:0]  arsize;
   logic [1:0]  arburst;
+  logic [2:0]  arprot;
   logic        arvalid;
   logic        arready;
+  logic [AXI_ID_WIDTH-1:0] rid;
   logic [63:0] rdata;
   logic [1:0]  rresp;
   logic        rlast;
@@ -56,6 +67,8 @@ module tb_axi_buf_dma;
   logic        rready;
 
   axi_buf_dma #(
+    .AXI_ID_WIDTH(AXI_ID_WIDTH),
+    .AXI_ID_VALUE(TEST_AXI_ID),
     .AXI_TIMEOUT_CYCLES(32)
   ) dut (
     .clk,
@@ -81,10 +94,12 @@ module tb_axi_buf_dma;
     .buf_dout,
     .buf_wr_en,
     .buf_csn,
+    .m_axi_awid(awid),
     .m_axi_awaddr(awaddr),
     .m_axi_awlen(awlen),
     .m_axi_awsize(awsize),
     .m_axi_awburst(awburst),
+    .m_axi_awprot(awprot),
     .m_axi_awvalid(awvalid),
     .m_axi_awready(awready),
     .m_axi_wdata(wdata),
@@ -92,15 +107,19 @@ module tb_axi_buf_dma;
     .m_axi_wlast(wlast),
     .m_axi_wvalid(wvalid),
     .m_axi_wready(wready),
+    .m_axi_bid(bid),
     .m_axi_bresp(bresp),
     .m_axi_bvalid(bvalid),
     .m_axi_bready(bready),
+    .m_axi_arid(arid),
     .m_axi_araddr(araddr),
     .m_axi_arlen(arlen),
     .m_axi_arsize(arsize),
     .m_axi_arburst(arburst),
+    .m_axi_arprot(arprot),
     .m_axi_arvalid(arvalid),
     .m_axi_arready(arready),
+    .m_axi_rid(rid),
     .m_axi_rdata(rdata),
     .m_axi_rresp(rresp),
     .m_axi_rlast(rlast),
@@ -108,13 +127,17 @@ module tb_axi_buf_dma;
     .m_axi_rready(rready)
   );
 
-  axi_memory_model mem (
+  axi_memory_model #(
+    .ID_WIDTH(AXI_ID_WIDTH)
+  ) mem (
     .clk,
     .rst_n,
+    .s_axi_awid(awid),
     .s_axi_awaddr(awaddr),
     .s_axi_awlen(awlen),
     .s_axi_awsize(awsize),
     .s_axi_awburst(awburst),
+    .s_axi_awprot(awprot),
     .s_axi_awvalid(awvalid),
     .s_axi_awready(awready),
     .s_axi_wdata(wdata),
@@ -122,15 +145,19 @@ module tb_axi_buf_dma;
     .s_axi_wlast(wlast),
     .s_axi_wvalid(wvalid),
     .s_axi_wready(wready),
+    .s_axi_bid(bid),
     .s_axi_bresp(bresp),
     .s_axi_bvalid(bvalid),
     .s_axi_bready(bready),
+    .s_axi_arid(arid),
     .s_axi_araddr(araddr),
     .s_axi_arlen(arlen),
     .s_axi_arsize(arsize),
     .s_axi_arburst(arburst),
+    .s_axi_arprot(arprot),
     .s_axi_arvalid(arvalid),
     .s_axi_arready(arready),
+    .s_axi_rid(rid),
     .s_axi_rdata(rdata),
     .s_axi_rresp(rresp),
     .s_axi_rlast(rlast),
@@ -139,6 +166,25 @@ module tb_axi_buf_dma;
   );
 
   always #5 clk = ~clk;
+
+  always @(posedge clk) begin
+    if (rst_n && awvalid) begin
+      if (awid !== TEST_AXI_ID)
+        $fatal(1, "AWID mismatch: got %0h expected %0h", awid, TEST_AXI_ID);
+      if (awprot !== EXPECTED_AWPROT)
+        $fatal(1, "AWPROT mismatch: got %03b expected %03b", awprot, EXPECTED_AWPROT);
+    end
+    if (rst_n && arvalid) begin
+      if (arid !== TEST_AXI_ID)
+        $fatal(1, "ARID mismatch: got %0h expected %0h", arid, TEST_AXI_ID);
+      if (arprot !== EXPECTED_ARPROT)
+        $fatal(1, "ARPROT mismatch: got %03b expected %03b", arprot, EXPECTED_ARPROT);
+    end
+    if (rst_n && bvalid && (bid !== TEST_AXI_ID))
+      $fatal(1, "BID did not echo AWID: got %0h expected %0h", bid, TEST_AXI_ID);
+    if (rst_n && rvalid && (rid !== TEST_AXI_ID))
+      $fatal(1, "RID did not echo ARID: got %0h expected %0h", rid, TEST_AXI_ID);
+  end
 
   task automatic buffer_write(input logic [6:0] addr, input logic [31:0] data);
     begin
@@ -168,7 +214,7 @@ module tb_axi_buf_dma;
 
   task automatic start_dma(
     input logic [31:0] address,
-    input logic [6:0] length_m1,
+    input logic [8:0] length_m1,
     input logic direction
   );
     begin
@@ -211,7 +257,7 @@ module tb_axi_buf_dma;
     buffer_write(7'd1, 32'h55667788);
     buffer_write(7'd2, 32'hA5A55A5A);
 
-    start_dma(32'h0000_0100, 7'd2, 1'b1);
+    start_dma(32'h0000_0100, 9'd2, 1'b1);
     if (dma_error)
       $fatal(1, "Unexpected DMA write error code %0d", dma_error_code);
 
@@ -233,7 +279,7 @@ module tb_axi_buf_dma;
     mem.mem[16'h206] = 8'h34;
     mem.mem[16'h207] = 8'h12;
 
-    start_dma(32'h0000_0200, 7'd1, 1'b0);
+    start_dma(32'h0000_0200, 9'd1, 1'b0);
     if (dma_error)
       $fatal(1, "Unexpected DMA read error code %0d", dma_error_code);
 
@@ -245,7 +291,7 @@ module tb_axi_buf_dma;
     if (rd !== 32'h12345678)
       $fatal(1, "Buffer word 1 mismatch: %08x", rd);
 
-    start_dma(32'h0000_0104, 7'd0, 1'b1);
+    start_dma(32'h0000_0104, 9'd0, 1'b1);
     if (!dma_error || dma_error_code != dma_pkg::DMA_ERR_ALIGN)
       $fatal(1, "Alignment error was not reported");
 
@@ -257,7 +303,7 @@ module tb_axi_buf_dma;
     @(negedge clk);
     irq_error_clear = 1'b0;
 
-    $display("AXI Buffer DMA V1 smoke test PASSED");
+    $display("AXI Buffer DMA ID/PROT smoke test PASSED");
     $finish;
   end
 
