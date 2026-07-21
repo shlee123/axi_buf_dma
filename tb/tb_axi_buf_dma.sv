@@ -40,15 +40,15 @@ module tb_axi_buf_dma;
     .irq_done_enable, .irq_error_enable, .irq_done_clear, .irq_error_clear,
     .irq_done_status, .irq_error_status, .dma_irq,
     .buf_addr, .buf_din, .buf_dout, .buf_wr_en, .buf_csn,
-    .m_axi_awid(awid), .m_axi_awaddr(awaddr), .m_axi_awlen(awlen),
+    .m_axi_awid(awid), .m_axi_awaddr(awaddr), .awlen(awlen),
     .m_axi_awsize(awsize), .m_axi_awburst(awburst), .m_axi_awprot(awprot),
-    .m_axi_awvalid(awvalid), .m_axi_awready(awready),
+    .awvalid(awvalid), .m_axi_awready(awready),
     .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),
     .m_axi_wvalid(wvalid), .m_axi_wready(wready),
     .m_axi_bid(bid), .m_axi_bresp(bresp), .m_axi_bvalid(bvalid), .m_axi_bready(bready),
-    .m_axi_arid(arid), .m_axi_araddr(araddr), .m_axi_arlen(arlen),
+    .m_axi_arid(arid), .m_axi_araddr(araddr), .arlen(arlen),
     .m_axi_arsize(arsize), .m_axi_arburst(arburst), .m_axi_arprot(arprot),
-    .m_axi_arvalid(arvalid), .m_axi_arready(arready),
+    .arvalid(arvalid), .m_axi_arready(arready),
     .m_axi_rid(rid), .m_axi_rdata(rdata), .m_axi_rresp(rresp),
     .m_axi_rlast(rlast), .m_axi_rvalid(rvalid), .m_axi_rready(rready)
   );
@@ -125,10 +125,10 @@ module tb_axi_buf_dma;
 
   // SINGLE_LENGTH defaults to one, so every AXI request must be a single-beat burst.
   always @(posedge clk) begin
-    if (rst_n && m_axi_awvalid && (m_axi_awlen != 8'd0))
-      $fatal(1, "SINGLE_LENGTH violation: AWLEN=%0d", m_axi_awlen);
-    if (rst_n && m_axi_arvalid && (m_axi_arlen != 8'd0))
-      $fatal(1, "SINGLE_LENGTH violation: ARLEN=%0d", m_axi_arlen);
+    if (rst_n && awvalid && (awlen != 8'd0))
+      $fatal(1, "SINGLE_LENGTH violation: AWLEN=%0d", awlen);
+    if (rst_n && arvalid && (arlen != 8'd0))
+      $fatal(1, "SINGLE_LENGTH violation: ARLEN=%0d", arlen);
   end
 
   initial begin
