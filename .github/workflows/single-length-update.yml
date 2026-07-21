@@ -1,0 +1,59 @@
+name: Single Length Update
+
+on:
+  push:
+    branches:
+      - agent/single-length
+
+permissions:
+  contents: write
+
+jobs:
+  update-single-length:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/single-length
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add SINGLE_LENGTH parameter and checks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          rtl = Path('rtl/axi_buf_dma.sv')
+          text = rtl.read_text()
+
+          old = '''  parameter int unsigned BUFFER_ADDR_WIDTH  = 7,\n  parameter int unsigned AXI_MAX_BURST_LEN  = 64,\n  parameter int unsigned AXI_TIMEOUT_CYCLES = 1024'''
+          new = '''  parameter int unsigned BUFFER_ADDR_WIDTH  = 7,\n  parameter int unsigned AXI_MAX_BURST_LEN  = 64,\n  parameter bit          SINGLE_LENGTH      = 1'b1,\n  parameter int unsigned AXI_TIMEOUT_CYCLES = 1024'''
+          if old not in text:
+              raise SystemExit('parameter insertion point not found')
+          text = text.replace(old, new, 1)
+
+          old = '''    integer unsigned page_bytes, max_payload, selected_bytes;\n    begin\n      page_bytes = 4096 - addr[11:0];\n      max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[2:0];\n      selected_bytes = bytes_left;\n      if (selected_bytes > page_bytes) selected_bytes = page_bytes;\n      if (selected_bytes > max_payload) selected_bytes = max_payload;'''
+          new = '''    integer unsigned page_bytes, max_payload, single_beat_bytes, selected_bytes;\n    begin\n      page_bytes = 4096 - addr[11:0];\n      max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[2:0];\n      single_beat_bytes = AXI_BYTES - addr[2:0];\n      selected_bytes = bytes_left;\n      if (SINGLE_LENGTH && (selected_bytes > single_beat_bytes))\n        selected_bytes = single_beat_bytes;\n      if (selected_bytes > page_bytes) selected_bytes = page_bytes;\n      if (selected_bytes > max_payload) selected_bytes = max_payload;'''
+          if old not in text:
+              raise SystemExit('calc_burst_bytes insertion point not found')
+          text = text.replace(old, new, 1)
+          rtl.write_text(text)
+
+          tb = Path('tb/tb_axi_buf_dma.sv')
+          text = tb.read_text()
+          marker = '  initial begin\n'
+          monitor = '''  // SINGLE_LENGTH defaults to one, so every AXI request must be a single-beat burst.\n  always @(posedge clk) begin\n    if (rst_n && m_axi_awvalid && (m_axi_awlen != 8'd0))\n      $fatal(1, "SINGLE_LENGTH violation: AWLEN=%0d", m_axi_awlen);\n    if (rst_n && m_axi_arvalid && (m_axi_arlen != 8'd0))\n      $fatal(1, "SINGLE_LENGTH violation: ARLEN=%0d", m_axi_arlen);\n  end\n\n'''
+          if monitor not in text:
+              if marker not in text:
+                  raise SystemExit('testbench insertion point not found')
+              text = text.replace(marker, monitor + marker, 1)
+          tb.write_text(text)
+          PY
+          grep -n "SINGLE_LENGTH\|single_beat_bytes" rtl/axi_buf_dma.sv
+          grep -n "SINGLE_LENGTH violation" tb/tb_axi_buf_dma.sv
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rtl/axi_buf_dma.sv tb/tb_axi_buf_dma.sv
+          git commit -m "rtl: add single-beat AXI mode"
+          git push origin HEAD:agent/single-length
