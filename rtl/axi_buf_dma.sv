@@ -264,7 +264,7 @@ module axi_buf_dma #(
   assign timeout_hit = wait_state && !forward_progress &&
                        (timeout_count >= AXI_TIMEOUT_CYCLES-1);
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n)
       timeout_count <= '0;
     else if (!wait_state || forward_progress)
@@ -273,7 +273,7 @@ module axi_buf_dma #(
       timeout_count <= timeout_count + 1'b1;
   end
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       irq_done_status <= 1'b0;
       irq_error_status <= 1'b0;
@@ -285,7 +285,7 @@ module axi_buf_dma #(
     end
   end
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= DMA_IDLE;
       dma_ready <= 1'b0;
