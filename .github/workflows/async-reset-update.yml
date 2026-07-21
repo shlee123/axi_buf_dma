@@ -1,0 +1,40 @@
+name: Async Reset Update
+
+on:
+  push:
+    branches:
+      - agent/async-reset
+
+permissions:
+  contents: write
+
+jobs:
+  update-reset:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/async-reset
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Convert rst_n to asynchronous reset
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('rtl/axi_buf_dma.sv')
+          text = path.read_text()
+          old = 'always_ff @(posedge clk) begin'
+          new = 'always_ff @(posedge clk or negedge rst_n) begin'
+          count = text.count(old)
+          if count != 3:
+              raise SystemExit(f'Expected 3 resettable always_ff blocks, found {count}')
+          path.write_text(text.replace(old, new))
+          PY
+          grep -n "always_ff @(posedge clk" rtl/axi_buf_dma.sv
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rtl/axi_buf_dma.sv
+          git commit -m "rtl: make rst_n asynchronous"
+          git push origin HEAD:agent/async-reset
