@@ -1,0 +1,47 @@
+name: Comment Single Length Debug
+
+on:
+  push:
+    branches:
+      - agent/single-length
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  comment-debug:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/single-length
+      - name: Install Icarus
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq iverilog
+      - name: Run smoke and capture output
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build
+          iverilog -g2012 -Wall -s tb_axi_buf_dma -o build/tb_axi_buf_dma.vvp \
+            rtl/dma_pkg.sv rtl/axi_buf_dma_buffer.sv rtl/axi_buf_dma.sv \
+            tb/axi_memory_model.sv tb/tb_axi_buf_dma.sv > debug.log 2>&1
+          compile_rc=$?
+          if [ $compile_rc -eq 0 ]; then
+            timeout 30s vvp build/tb_axi_buf_dma.vvp >> debug.log 2>&1
+            sim_rc=$?
+          else
+            sim_rc=0
+          fi
+          {
+            echo 'SINGLE_LENGTH debug output:'
+            echo '```text'
+            cat debug.log
+            echo "compile_rc=$compile_rc sim_rc=$sim_rc"
+            echo '```'
+          } > comment.md
+          gh api repos/${{ github.repository }}/issues/39/comments -f body="$(cat comment.md)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
