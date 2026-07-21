@@ -56,6 +56,7 @@ module axi_memory_model #(
   localparam int unsigned RLAST_MISSING = 2;
   localparam int unsigned DATA_BYTES    = DATA_WIDTH/8;
   localparam int unsigned ADDR_LSB      = $clog2(DATA_BYTES);
+  localparam int unsigned ADDR_LSB      = $clog2(DATA_BYTES);
 
   logic [7:0] mem [0:MEM_BYTES-1];
   logic [ADDR_WIDTH-1:0] write_addr;
