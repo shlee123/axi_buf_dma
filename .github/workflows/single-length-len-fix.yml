@@ -1,0 +1,39 @@
+name: Single Length LEN Fix
+
+on:
+  push:
+    branches:
+      - agent/single-length
+
+permissions:
+  contents: write
+
+jobs:
+  fix-len:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/single-length
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Force LEN outputs in single-beat mode
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('rtl/axi_buf_dma.sv')
+          text = path.read_text()
+          text = text.replace('    m_axi_awlen   = burst_beats - 1\'b1;',
+                              '    m_axi_awlen   = SINGLE_LENGTH ? 8\'d0 : (burst_beats - 1\'b1);', 1)
+          text = text.replace('    m_axi_arlen   = burst_beats - 1\'b1;',
+                              '    m_axi_arlen   = SINGLE_LENGTH ? 8\'d0 : (burst_beats - 1\'b1);', 1)
+          path.write_text(text)
+          PY
+          grep -n "m_axi_.*len" rtl/axi_buf_dma.sv
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rtl/axi_buf_dma.sv
+          git commit -m "rtl: force zero AXI LEN in single mode"
+          git push origin HEAD:agent/single-length
