@@ -1,0 +1,55 @@
+name: Apply AXI Address Alignment
+
+on:
+  push:
+    branches:
+      - agent/align-axi-address
+
+permissions:
+  contents: write
+
+jobs:
+  apply-update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/align-axi-address
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Align AW and AR addresses and add checks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          rtl = Path('rtl/axi_buf_dma.sv')
+          text = rtl.read_text()
+          replacements = {
+              '    m_axi_awaddr  = current_addr;': "    m_axi_awaddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};",
+              '    m_axi_araddr  = current_addr;': "    m_axi_araddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing RTL pattern: {old}')
+              text = text.replace(old, new, 1)
+          rtl.write_text(text)
+
+          tb = Path('tb/tb_axi_buf_dma.sv')
+          text = tb.read_text()
+          marker = '  always @(posedge clk) begin\n    if (rst_n && awvalid) begin\n'
+          checks = '''  // AXI addresses must be aligned to the current 64-bit (8-byte) data width.\n  always @(posedge clk) begin\n    if (rst_n && awvalid && (awaddr[2:0] != 3'b000))\n      $fatal(1, "AWADDR is not 8-byte aligned: %08h", awaddr);\n    if (rst_n && arvalid && (araddr[2:0] != 3'b000))\n      $fatal(1, "ARADDR is not 8-byte aligned: %08h", araddr);\n  end\n\n'''
+          if checks not in text:
+              if marker not in text:
+                  raise SystemExit('testbench insertion point not found')
+              text = text.replace(marker, checks + marker, 1)
+          tb.write_text(text)
+          PY
+          grep -n "m_axi_a[wr]addr" rtl/axi_buf_dma.sv
+          grep -n "not 8-byte aligned" tb/tb_axi_buf_dma.sv
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rtl/axi_buf_dma.sv tb/tb_axi_buf_dma.sv
+          git commit -m "rtl: align AXI addresses to data width"
+          git push origin HEAD:agent/align-axi-address
