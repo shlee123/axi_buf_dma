@@ -82,6 +82,7 @@ module axi_buf_dma #(
 
   localparam logic [1:0] AXI_RESP_OKAY = 2'b00;
   localparam int unsigned AXI_BYTES = AXI_DATA_WIDTH/8;
+  localparam int unsigned AXI_ADDR_LSB = $clog2(AXI_BYTES);
   localparam int unsigned BUFFER_BYTES = (1 << BUFFER_ADDR_WIDTH) * 4;
   localparam int unsigned TIMEOUT_W = (AXI_TIMEOUT_CYCLES <= 1) ? 1 : $clog2(AXI_TIMEOUT_CYCLES);
 
@@ -97,13 +98,13 @@ module axi_buf_dma #(
   logic [AXI_DATA_WIDTH-1:0] wdata_reg, wdata_stage, wdata_with_byte;
   logic [AXI_DATA_WIDTH/8-1:0] wstrb_reg, packed_wstrb;
   logic wlast_reg;
-  logic [3:0] lane_start, bytes_this_beat, w_load_count;
+  logic [8:0] lane_start, bytes_this_beat, w_load_count;
   logic [7:0] sram_read_byte;
   logic [9:0] w_source_byte_index;
 
   logic [AXI_DATA_WIDTH-1:0] rdata_reg;
   logic rlast_reg;
-  logic [3:0] r_lane_start, r_payload_count, r_payload_index;
+  logic [8:0] r_lane_start, r_payload_count, r_payload_index;
   logic [31:0] read_word_stage, read_word_with_byte;
   logic [7:0] current_r_byte;
   logic r_word_write;
@@ -123,8 +124,8 @@ module axi_buf_dma #(
     integer unsigned page_bytes, max_payload, single_beat_bytes, selected_bytes;
     begin
       page_bytes = 4096 - addr[11:0];
-      max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[2:0];
-      single_beat_bytes = AXI_BYTES - addr[2:0];
+      max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[AXI_ADDR_LSB-1:0];
+      single_beat_bytes = AXI_BYTES - addr[AXI_ADDR_LSB-1:0];
       selected_bytes = bytes_left;
       if (SINGLE_LENGTH && (selected_bytes > single_beat_bytes))
         selected_bytes = single_beat_bytes;
@@ -140,7 +141,7 @@ module axi_buf_dma #(
   );
     integer unsigned beats;
     begin
-      beats = (addr[2:0] + selected_bytes + AXI_BYTES - 1) / AXI_BYTES;
+      beats = (addr[AXI_ADDR_LSB-1:0] + selected_bytes + AXI_BYTES - 1) / AXI_BYTES;
       calc_burst_beats = beats[7:0];
     end
   endfunction
@@ -170,9 +171,9 @@ module axi_buf_dma #(
   // constant/part selects. This preserves combinational behavior while avoiding
   // the known Icarus elaboration diagnostic that expands sensitivity to all bits.
   always @* begin
-    lane_start = (beat_index == 0) ? {1'b0, current_addr[2:0]} : 4'd0;
+    lane_start = (beat_index == 0) ? current_addr[AXI_ADDR_LSB-1:0] : '0;
     if (remaining_bytes < (AXI_BYTES - lane_start))
-      bytes_this_beat = remaining_bytes[3:0];
+      bytes_this_beat = remaining_bytes;
     else
       bytes_this_beat = AXI_BYTES - lane_start;
   end
@@ -226,9 +227,9 @@ module axi_buf_dma #(
 
   always @* begin
     m_axi_awid    = AXI_ID_VALUE;
-    m_axi_awaddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};
+    m_axi_awaddr  = (current_addr >> AXI_ADDR_LSB) << AXI_ADDR_LSB;
     m_axi_awlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
-    m_axi_awsize  = 3'b011;
+    m_axi_awsize  = AXI_ADDR_LSB;
     m_axi_awburst = 2'b01;
     m_axi_awprot  = `AXI_DMA_AWPROT;
     m_axi_awvalid = (state == DMA_W_AW);
@@ -238,9 +239,9 @@ module axi_buf_dma #(
     m_axi_wvalid  = (state == DMA_W_SEND);
     m_axi_bready  = (state == DMA_W_RESP);
     m_axi_arid    = AXI_ID_VALUE;
-    m_axi_araddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};
+    m_axi_araddr  = (current_addr >> AXI_ADDR_LSB) << AXI_ADDR_LSB;
     m_axi_arlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
-    m_axi_arsize  = 3'b011;
+    m_axi_arsize  = AXI_ADDR_LSB;
     m_axi_arburst = 2'b01;
     m_axi_arprot  = `AXI_DMA_ARPROT;
     m_axi_arvalid = (state == DMA_R_AR);

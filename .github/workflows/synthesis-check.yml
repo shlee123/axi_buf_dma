@@ -33,12 +33,16 @@ jobs:
             exit 1
           fi
 
-      - name: SystemVerilog elaboration
+      - name: SystemVerilog elaboration across AXI data widths
         run: |
-          iverilog -g2012 -Wall -s axi_buf_dma -t null \
-            rtl/dma_pkg.sv \
-            rtl/axi_buf_dma_buffer.sv \
-            rtl/axi_buf_dma.sv
+          for width in 32 64 128; do
+            echo "Elaborating AXI_DATA_WIDTH=$width"
+            iverilog -g2012 -Wall -s axi_buf_dma -t null \
+              -Paxi_buf_dma.AXI_DATA_WIDTH=$width \
+              rtl/dma_pkg.sv \
+              rtl/axi_buf_dma_buffer.sv \
+              rtl/axi_buf_dma.sv
+          done
 
       - name: Verilator synthesis-oriented lint
         run: |
