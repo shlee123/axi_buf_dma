@@ -16,7 +16,7 @@ module axi_buf_dma_buffer #(
 
   logic [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     if (!csn) begin
       if (wr_en)
         mem[address] <= din;
