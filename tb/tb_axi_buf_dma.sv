@@ -123,6 +123,14 @@ module tb_axi_buf_dma;
 
   logic [31:0] rd;
 
+  // SINGLE_LENGTH defaults to one, so every AXI request must be a single-beat burst.
+  always @(posedge clk) begin
+    if (rst_n && m_axi_awvalid && (m_axi_awlen != 8'd0))
+      $fatal(1, "SINGLE_LENGTH violation: AWLEN=%0d", m_axi_awlen);
+    if (rst_n && m_axi_arvalid && (m_axi_arlen != 8'd0))
+      $fatal(1, "SINGLE_LENGTH violation: ARLEN=%0d", m_axi_arlen);
+  end
+
   initial begin
     clk = 1'b0; rst_n = 1'b0;
     dma_sa = '0; dma_length = '0; dma_rw = 1'b0; dma_start = 1'b0;

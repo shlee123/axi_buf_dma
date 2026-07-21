@@ -19,6 +19,7 @@ module axi_buf_dma #(
   parameter logic [AXI_ID_WIDTH-1:0] AXI_ID_VALUE = '0,
   parameter int unsigned BUFFER_ADDR_WIDTH  = 7,
   parameter int unsigned AXI_MAX_BURST_LEN  = 64,
+  parameter bit          SINGLE_LENGTH      = 1'b1,
   parameter int unsigned AXI_TIMEOUT_CYCLES = 1024
 ) (
   input  logic                         clk,
@@ -119,11 +120,14 @@ module axi_buf_dma #(
     input logic [AXI_ADDR_WIDTH-1:0] addr,
     input logic [9:0] bytes_left
   );
-    integer unsigned page_bytes, max_payload, selected_bytes;
+    integer unsigned page_bytes, max_payload, single_beat_bytes, selected_bytes;
     begin
       page_bytes = 4096 - addr[11:0];
       max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[2:0];
+      single_beat_bytes = AXI_BYTES - addr[2:0];
       selected_bytes = bytes_left;
+      if (SINGLE_LENGTH && (selected_bytes > single_beat_bytes))
+        selected_bytes = single_beat_bytes;
       if (selected_bytes > page_bytes) selected_bytes = page_bytes;
       if (selected_bytes > max_payload) selected_bytes = max_payload;
       calc_burst_bytes = selected_bytes[12:0];
