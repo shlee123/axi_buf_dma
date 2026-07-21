@@ -226,7 +226,7 @@ module axi_buf_dma #(
 
   always @* begin
     m_axi_awid    = AXI_ID_VALUE;
-    m_axi_awaddr  = current_addr;
+    m_axi_awaddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};
     m_axi_awlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
     m_axi_awsize  = 3'b011;
     m_axi_awburst = 2'b01;
@@ -238,7 +238,7 @@ module axi_buf_dma #(
     m_axi_wvalid  = (state == DMA_W_SEND);
     m_axi_bready  = (state == DMA_W_RESP);
     m_axi_arid    = AXI_ID_VALUE;
-    m_axi_araddr  = current_addr;
+    m_axi_araddr  = {current_addr[AXI_ADDR_WIDTH-1:3], 3'b000};
     m_axi_arlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
     m_axi_arsize  = 3'b011;
     m_axi_arburst = 2'b01;
