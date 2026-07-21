@@ -63,6 +63,27 @@ jobs:
             tb/tb_axi_buf_dma.sv
           timeout 30s vvp build/tb_axi_buf_dma.vvp
 
+      - name: AXI data-width functional regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          for width in 32 128; do
+            for single in 0 1; do
+              out="build/tb_data_width_${width}_${single}.vvp"
+              iverilog -g2012 -Wall -s tb_axi_buf_dma_data_width \
+                -Ptb_axi_buf_dma_data_width.AXI_DATA_WIDTH=${width} \
+                -Ptb_axi_buf_dma_data_width.SINGLE_LENGTH=${single} \
+                -o "$out" \
+                rtl/dma_pkg.sv \
+                rtl/axi_buf_dma_buffer.sv \
+                rtl/axi_buf_dma.sv \
+                tb/axi_memory_model.sv \
+                tb/tb_axi_buf_dma_data_width.sv
+              timeout 60s vvp "$out"
+            done
+          done
+
       - name: SRAM interface contract check
         shell: bash
         run: |
