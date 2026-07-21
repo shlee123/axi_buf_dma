@@ -55,6 +55,7 @@ module axi_memory_model #(
   localparam int unsigned RLAST_EARLY   = 1;
   localparam int unsigned RLAST_MISSING = 2;
   localparam int unsigned DATA_BYTES    = DATA_WIDTH/8;
+  localparam int unsigned ADDR_LSB      = $clog2(DATA_BYTES);
 
   logic [7:0] mem [0:MEM_BYTES-1];
   logic [ADDR_WIDTH-1:0] write_addr;
@@ -139,7 +140,7 @@ module axi_memory_model #(
       end
 
       if (s_axi_awvalid && s_axi_awready) begin
-        write_addr       <= {s_axi_awaddr[ADDR_WIDTH-1:3], 3'b000};
+        write_addr       <= (s_axi_awaddr >> ADDR_LSB) << ADDR_LSB;
         write_beats_left <= s_axi_awlen + 1'b1;
         write_active     <= 1'b1;
         s_axi_bid        <= s_axi_awid;
@@ -190,7 +191,7 @@ module axi_memory_model #(
         rvalid_delay_count <= rvalid_delay_count - 1;
 
       if (s_axi_arvalid && s_axi_arready) begin
-        read_addr          <= {s_axi_araddr[ADDR_WIDTH-1:3], 3'b000};
+        read_addr          <= (s_axi_araddr >> ADDR_LSB) << ADDR_LSB;
         read_beats_left    <= s_axi_arlen + 1'b1;
         read_active        <= 1'b1;
         s_axi_rid          <= s_axi_arid;
@@ -225,8 +226,6 @@ module axi_memory_model #(
     end
   end
 
-  // PROT is accepted and observable by testbenches. The memory behavior is
-  // intentionally identical for all protection attributes.
   logic unused_prot;
   assign unused_prot = ^{s_axi_awprot, s_axi_arprot, s_axi_awburst, s_axi_arburst};
 
