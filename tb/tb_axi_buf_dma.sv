@@ -70,6 +70,14 @@ module tb_axi_buf_dma;
 
   always #5 clk = ~clk;
 
+  // AXI addresses must be aligned to the current 64-bit (8-byte) data width.
+  always @(posedge clk) begin
+    if (rst_n && awvalid && (awaddr[2:0] != 3'b000))
+      $fatal(1, "AWADDR is not 8-byte aligned: %08h", awaddr);
+    if (rst_n && arvalid && (araddr[2:0] != 3'b000))
+      $fatal(1, "ARADDR is not 8-byte aligned: %08h", araddr);
+  end
+
   always @(posedge clk) begin
     if (rst_n && awvalid) begin
       if (awid !== TEST_AXI_ID)
