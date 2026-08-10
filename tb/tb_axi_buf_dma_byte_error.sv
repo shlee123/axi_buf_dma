@@ -15,6 +15,7 @@ module tb_axi_buf_dma_byte_error #(
   logic [31:0] dma_sa;
   logic [8:0] dma_length;
   logic dma_rw, dma_start, dma_ready, dma_busy, dma_error;
+  logic [2:0] i_axi_prot = 3'b000;
   logic [3:0] dma_error_code;
   logic timeout_status;
   logic irq_done_enable, irq_error_enable, irq_done_clear, irq_error_clear;

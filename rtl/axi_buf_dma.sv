@@ -1,17 +1,5 @@
 `timescale 1ns/1ps
 
-// AXI protection defaults are compile-time configurable.
-// AXPROT[0]: 0=unprivileged, 1=privileged
-// AXPROT[1]: 0=secure,       1=non-secure
-// AXPROT[2]: 0=data,         1=instruction
-`ifndef AXI_DMA_AWPROT
-  `define AXI_DMA_AWPROT 3'b000
-`endif
-
-`ifndef AXI_DMA_ARPROT
-  `define AXI_DMA_ARPROT 3'b000
-`endif
-
 module axi_buf_dma #(
   parameter int unsigned AXI_ADDR_WIDTH     = 32,
   parameter int unsigned AXI_DATA_WIDTH     = 64,
@@ -28,6 +16,7 @@ module axi_buf_dma #(
   input  logic [8:0]                   dma_length,
   input  logic                         dma_rw,
   input  logic                         dma_start,
+  input  logic [2:0]                   i_axi_prot,
   output logic                         dma_ready,
   output logic                         dma_busy,
   output logic                         dma_error,
@@ -227,7 +216,7 @@ module axi_buf_dma #(
     m_axi_awlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
     m_axi_awsize  = AXI_ADDR_LSB;
     m_axi_awburst = 2'b01;
-    m_axi_awprot  = `AXI_DMA_AWPROT;
+    m_axi_awprot  = i_axi_prot;
     m_axi_awvalid = (state == DMA_W_AW);
     m_axi_wdata   = wdata_reg;
     m_axi_wstrb   = wstrb_reg;
@@ -239,7 +228,7 @@ module axi_buf_dma #(
     m_axi_arlen   = SINGLE_LENGTH ? 8'd0 : (burst_beats - 1'b1);
     m_axi_arsize  = AXI_ADDR_LSB;
     m_axi_arburst = 2'b01;
-    m_axi_arprot  = `AXI_DMA_ARPROT;
+    m_axi_arprot  = i_axi_prot;
     m_axi_arvalid = (state == DMA_R_AR);
     m_axi_rready  = (state == DMA_R_DATA);
   end

@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 
 module tb_axi_buf_dma_byte_random;
+  logic [2:0] i_axi_prot = 3'b000;
   // AXI ID/PROT wildcard compatibility signals
   logic [5:0] m_axi_awid, m_axi_bid, m_axi_arid, m_axi_rid;
   logic [2:0] m_axi_awprot, m_axi_arprot;
