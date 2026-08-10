@@ -116,35 +116,31 @@ module axi_buf_dma #(
   logic [TIMEOUT_W-1:0] timeout_count;
   logic wait_state, forward_progress, timeout_hit;
   logic done_event, error_event;
+  integer unsigned burst_page_bytes;
+  integer unsigned burst_max_payload;
+  integer unsigned burst_single_beat_bytes;
+  integer unsigned burst_selected_bytes;
+  integer unsigned burst_calculated_beats;
+  logic [12:0] next_burst_bytes;
+  logic [7:0] next_burst_beats;
 
-  function automatic [12:0] calc_burst_bytes(
-    input logic [AXI_ADDR_WIDTH-1:0] addr,
-    input logic [9:0] bytes_left
-  );
-    integer unsigned page_bytes, max_payload, single_beat_bytes, selected_bytes;
-    begin
-      page_bytes = 4096 - addr[11:0];
-      max_payload = AXI_MAX_BURST_LEN * AXI_BYTES - addr[AXI_ADDR_LSB-1:0];
-      single_beat_bytes = AXI_BYTES - addr[AXI_ADDR_LSB-1:0];
-      selected_bytes = bytes_left;
-      if (SINGLE_LENGTH && (selected_bytes > single_beat_bytes))
-        selected_bytes = single_beat_bytes;
-      if (selected_bytes > page_bytes) selected_bytes = page_bytes;
-      if (selected_bytes > max_payload) selected_bytes = max_payload;
-      calc_burst_bytes = selected_bytes[12:0];
-    end
-  endfunction
-
-  function automatic [7:0] calc_burst_beats(
-    input logic [AXI_ADDR_WIDTH-1:0] addr,
-    input logic [12:0] selected_bytes
-  );
-    integer unsigned beats;
-    begin
-      beats = (addr[AXI_ADDR_LSB-1:0] + selected_bytes + AXI_BYTES - 1) / AXI_BYTES;
-      calc_burst_beats = beats[7:0];
-    end
-  endfunction
+  always @* begin
+    burst_page_bytes = 4096 - current_addr[11:0];
+    burst_max_payload = AXI_MAX_BURST_LEN * AXI_BYTES -
+                        current_addr[AXI_ADDR_LSB-1:0];
+    burst_single_beat_bytes = AXI_BYTES - current_addr[AXI_ADDR_LSB-1:0];
+    burst_selected_bytes = remaining_bytes;
+    if (SINGLE_LENGTH && (burst_selected_bytes > burst_single_beat_bytes))
+      burst_selected_bytes = burst_single_beat_bytes;
+    if (burst_selected_bytes > burst_page_bytes)
+      burst_selected_bytes = burst_page_bytes;
+    if (burst_selected_bytes > burst_max_payload)
+      burst_selected_bytes = burst_max_payload;
+    next_burst_bytes = burst_selected_bytes[12:0];
+    burst_calculated_beats = (current_addr[AXI_ADDR_LSB-1:0] +
+                              burst_selected_bytes + AXI_BYTES - 1) / AXI_BYTES;
+    next_burst_beats = burst_calculated_beats[7:0];
+  end
 
   axi_buf_dma_buffer #(
     .ADDR_WIDTH(BUFFER_ADDR_WIDTH),
@@ -350,8 +346,8 @@ module axi_buf_dma #(
           end
 
           DMA_PREP: begin
-            burst_bytes <= calc_burst_bytes(current_addr, remaining_bytes);
-            burst_beats <= calc_burst_beats(current_addr, calc_burst_bytes(current_addr, remaining_bytes));
+            burst_bytes <= next_burst_bytes;
+            burst_beats <= next_burst_beats;
             beat_index <= 8'd0;
             if (direction_write) state <= DMA_W_AW;
             else state <= DMA_R_AR;
