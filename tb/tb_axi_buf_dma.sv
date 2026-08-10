@@ -4,14 +4,13 @@ module tb_axi_buf_dma;
 
   localparam int unsigned AXI_ID_WIDTH = 6;
   localparam logic [AXI_ID_WIDTH-1:0] TEST_AXI_ID = 6'h15;
-  localparam logic [2:0] EXPECTED_AWPROT = 3'b000;
-  localparam logic [2:0] EXPECTED_ARPROT = 3'b000;
 
   logic clk;
   logic rst_n;
   logic [31:0] dma_sa;
   logic [8:0]  dma_length;
   logic dma_rw, dma_start, dma_ready, dma_busy, dma_error;
+  logic [2:0] i_axi_prot = 3'b101;
   logic [3:0] dma_error_code;
   logic timeout_status;
   logic irq_done_enable, irq_error_enable, irq_done_clear, irq_error_clear;
@@ -36,6 +35,7 @@ module tb_axi_buf_dma;
     .AXI_TIMEOUT_CYCLES(32)
   ) dut (
     .clk, .rst_n, .dma_sa, .dma_length, .dma_rw, .dma_start,
+    .i_axi_prot(i_axi_prot),
     .dma_ready, .dma_busy, .dma_error, .dma_error_code, .timeout_status,
     .irq_done_enable, .irq_error_enable, .irq_done_clear, .irq_error_clear,
     .irq_done_status, .irq_error_status, .dma_irq,
@@ -82,14 +82,14 @@ module tb_axi_buf_dma;
     if (rst_n && awvalid) begin
       if (awid !== TEST_AXI_ID)
         $fatal(1, "AWID mismatch: got %0h expected %0h", awid, TEST_AXI_ID);
-      if (awprot !== EXPECTED_AWPROT)
-        $fatal(1, "AWPROT mismatch: got %03b expected %03b", awprot, EXPECTED_AWPROT);
+      if (awprot !== i_axi_prot)
+        $fatal(1, "AWPROT mismatch: got %03b expected %03b", awprot, i_axi_prot);
     end
     if (rst_n && arvalid) begin
       if (arid !== TEST_AXI_ID)
         $fatal(1, "ARID mismatch: got %0h expected %0h", arid, TEST_AXI_ID);
-      if (arprot !== EXPECTED_ARPROT)
-        $fatal(1, "ARPROT mismatch: got %03b expected %03b", arprot, EXPECTED_ARPROT);
+      if (arprot !== i_axi_prot)
+        $fatal(1, "ARPROT mismatch: got %03b expected %03b", arprot, i_axi_prot);
     end
     if (rst_n && bvalid && (bid !== TEST_AXI_ID))
       $fatal(1, "BID did not echo AWID: got %0h expected %0h", bid, TEST_AXI_ID);

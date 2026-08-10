@@ -15,6 +15,7 @@ module tb_axi_buf_dma_byte_error #(
   logic [31:0] dma_sa;
   logic [8:0] dma_length;
   logic dma_rw, dma_start, dma_ready, dma_busy, dma_error;
+  logic [2:0] i_axi_prot = 3'b000;
   logic [3:0] dma_error_code;
   logic timeout_status;
   logic irq_done_enable, irq_error_enable, irq_done_clear, irq_error_clear;
@@ -39,6 +40,7 @@ module tb_axi_buf_dma_byte_error #(
   axi_buf_dma #(
     .SINGLE_LENGTH(1'b0),.AXI_TIMEOUT_CYCLES(16)) dut (
     .*,
+    .i_axi_prot(i_axi_prot),
     .m_axi_awid(awid), .m_axi_awaddr(awaddr), .m_axi_awlen(awlen),
     .m_axi_awsize(awsize), .m_axi_awburst(awburst), .m_axi_awprot(awprot),
     .m_axi_awvalid(awvalid), .m_axi_awready(awready),

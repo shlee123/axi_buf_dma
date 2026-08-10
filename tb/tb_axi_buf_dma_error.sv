@@ -3,6 +3,7 @@
 module tb_axi_buf_dma_error #(
   parameter int TEST_KIND = 1
 );
+  logic [2:0] i_axi_prot = 3'b000;
 
   localparam logic [1:0] BRESP_CFG = (TEST_KIND == 1) ? 2'b10 : 2'b00;
   localparam logic [1:0] RRESP_CFG = (TEST_KIND == 2) ? 2'b10 : 2'b00;
@@ -36,6 +37,7 @@ module tb_axi_buf_dma_error #(
   always #5 clk = ~clk;
 
   axi_buf_dma #(.AXI_TIMEOUT_CYCLES(16)) dut (.*,
+    .i_axi_prot(i_axi_prot),
     .m_axi_awaddr(awaddr), .m_axi_awlen(awlen), .m_axi_awsize(awsize),
     .m_axi_awburst(awburst), .m_axi_awvalid(awvalid), .m_axi_awready(awready),
     .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),

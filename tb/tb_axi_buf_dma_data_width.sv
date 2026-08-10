@@ -14,6 +14,7 @@ module tb_axi_buf_dma_data_width #(
   logic [31:0] dma_sa;
   logic [8:0] dma_length;
   logic dma_rw, dma_start, dma_ready, dma_busy, dma_error;
+  logic [2:0] i_axi_prot = 3'b000;
   logic [3:0] dma_error_code;
   logic timeout_status;
   logic irq_done_enable, irq_error_enable, irq_done_clear, irq_error_clear;
@@ -42,6 +43,7 @@ module tb_axi_buf_dma_data_width #(
     .AXI_TIMEOUT_CYCLES(128)
   ) dut (
     .clk, .rst_n, .dma_sa, .dma_length, .dma_rw, .dma_start,
+    .i_axi_prot(i_axi_prot),
     .dma_ready, .dma_busy, .dma_error, .dma_error_code, .timeout_status,
     .irq_done_enable, .irq_error_enable, .irq_done_clear, .irq_error_clear,
     .irq_done_status, .irq_error_status, .dma_irq,
