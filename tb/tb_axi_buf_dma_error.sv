@@ -37,6 +37,7 @@ module tb_axi_buf_dma_error #(
   always #5 clk = ~clk;
 
   axi_buf_dma #(.AXI_TIMEOUT_CYCLES(16)) dut (.*,
+    .i_axi_prot(i_axi_prot),
     .m_axi_awaddr(awaddr), .m_axi_awlen(awlen), .m_axi_awsize(awsize),
     .m_axi_awburst(awburst), .m_axi_awvalid(awvalid), .m_axi_awready(awready),
     .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),

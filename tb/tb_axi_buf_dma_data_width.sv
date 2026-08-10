@@ -42,7 +42,8 @@ module tb_axi_buf_dma_data_width #(
     .SINGLE_LENGTH(SINGLE_LENGTH),
     .AXI_TIMEOUT_CYCLES(128)
   ) dut (
-    .clk, .rst_n, .dma_sa, .dma_length, .dma_rw, .dma_start, .i_axi_prot,
+    .clk, .rst_n, .dma_sa, .dma_length, .dma_rw, .dma_start,
+    .i_axi_prot(i_axi_prot),
     .dma_ready, .dma_busy, .dma_error, .dma_error_code, .timeout_status,
     .irq_done_enable, .irq_error_enable, .irq_done_clear, .irq_error_clear,
     .irq_done_status, .irq_error_status, .dma_irq,
