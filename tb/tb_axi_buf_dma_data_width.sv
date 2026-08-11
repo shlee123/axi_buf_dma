@@ -42,6 +42,10 @@ module tb_axi_buf_dma_data_width #(
     .SINGLE_LENGTH(SINGLE_LENGTH),
     .AXI_TIMEOUT_CYCLES(128)
   ) dut (
+    .mbist_clk(1'b0), .mode_mbist(1'b0),
+    .Test_CEN_sram(1'b1), .Test_WEN_sram(1'b1),
+    .Test_A_sram('0), .Test_D_sram('0), .Test_WME_sram('0),
+    .Test_Q_sram(),
     .clk, .rst_n, .dma_sa, .dma_length, .dma_rw, .dma_start,
     .i_axi_prot(i_axi_prot),
     .dma_ready, .dma_busy, .dma_error, .dma_error_code, .timeout_status,

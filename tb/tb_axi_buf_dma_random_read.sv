@@ -47,6 +47,10 @@ module tb_axi_buf_dma_random_read;
   always #5 clk = ~clk;
 
   axi_buf_dma dut (.*,
+    .mbist_clk(1'b0), .mode_mbist(1'b0),
+    .Test_CEN_sram(1'b1), .Test_WEN_sram(1'b1),
+    .Test_A_sram('0), .Test_D_sram('0), .Test_WME_sram('0),
+    .Test_Q_sram(),
     .m_axi_awaddr(awaddr), .m_axi_awlen(awlen), .m_axi_awsize(awsize),
     .m_axi_awburst(awburst), .m_axi_awvalid(awvalid), .m_axi_awready(awready),
     .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),

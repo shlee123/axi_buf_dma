@@ -36,11 +36,33 @@ jobs:
           vvp build/tb_axi_buf_dma_buffer.vvp | tee build/sram-directed.log
           grep -F 'SRAM_WRAPPER_TEST_PASS' build/sram-directed.log
 
+      - name: Compile and run DMA buffer normal-mode test
+        run: |
+          iverilog -g2012 -Wall \
+            -s tb_axi_buf_dma_normal_mode \
+            -o build/tb_axi_buf_dma_normal_mode.vvp \
+            rtl/dma_pkg.sv \
+            rtl/axi_buf_dma_buffer.sv \
+            rtl/axi_buf_dma.sv \
+            tb/tb_axi_buf_dma_normal_mode.sv
+          vvp build/tb_axi_buf_dma_normal_mode.vvp | tee build/normal-mode.log
+          grep -F 'AXI_BUF_DMA_NORMAL_MODE_TEST_PASS' build/normal-mode.log
+
+      - name: Elaborate MBIST Real SRAM option
+        run: |
+          iverilog -g2012 -Wall -DINNO_HV40 \
+            -s axi_buf_dma -t null \
+            rtl/dma_pkg.sv \
+            tb/M31GSSP200PH040S_128X1X32CM8BK1_stub.sv \
+            rtl/axi_buf_dma.sv
+
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sram-directed-log
-          path: build/sram-directed.log
+          path: |
+            build/sram-directed.log
+            build/normal-mode.log
           if-no-files-found: warn
           retention-days: 7

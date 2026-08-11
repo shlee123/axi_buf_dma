@@ -45,6 +45,10 @@ module tb_axi_buf_dma_byte_boundary;
   always #5 clk = ~clk;
 
   axi_buf_dma #(.SINGLE_LENGTH(1'b0)) dut (.*,
+    .mbist_clk(1'b0), .mode_mbist(1'b0),
+    .Test_CEN_sram(1'b1), .Test_WEN_sram(1'b1),
+    .Test_A_sram('0), .Test_D_sram('0), .Test_WME_sram('0),
+    .Test_Q_sram(),
     .i_axi_prot(i_axi_prot),
     .m_axi_awaddr(awaddr), .m_axi_awlen(awlen), .m_axi_awsize(awsize),
     .m_axi_awburst(awburst), .m_axi_awvalid(awvalid), .m_axi_awready(awready),

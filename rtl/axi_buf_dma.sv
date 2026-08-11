@@ -1,5 +1,10 @@
 `timescale 1ns/1ps
 
+// AXI protection defaults are compile-time configurable.
+// AXPROT[0]: 0=unprivileged, 1=privileged
+// AXPROT[1]: 0=secure,     1=non-secure
+// AXPROT[2]: 0=data,       1=instruction
+
 module axi_buf_dma #(
   parameter int unsigned AXI_ADDR_WIDTH     = 32,
   parameter int unsigned AXI_DATA_WIDTH     = 64,
@@ -11,6 +16,7 @@ module axi_buf_dma #(
   parameter int unsigned AXI_TIMEOUT_CYCLES = 1024
 ) (
   input  logic                         clk,
+  input  logic                         mbist_clk,
   input  logic                         rst_n,
   input  logic [31:0]                  dma_sa,
   input  logic [8:0]                   dma_length,
@@ -64,7 +70,15 @@ module axi_buf_dma #(
   input  logic [1:0]                   m_axi_rresp,
   input  logic                         m_axi_rlast,
   input  logic                         m_axi_rvalid,
-  output logic                         m_axi_rready
+  output logic                         m_axi_rready,
+
+  input  wire                          mode_mbist,
+  input  wire                          Test_CEN_sram,
+  input  wire                          Test_WEN_sram,
+  input  wire [BUFFER_ADDR_WIDTH-1:0]  Test_A_sram,
+  input  wire [31:0]                   Test_D_sram,
+  input  wire [31:0]                   Test_WME_sram,
+  output wire [31:0]                   Test_Q_sram
 );
 
   import dma_pkg::*;
@@ -131,17 +145,46 @@ module axi_buf_dma #(
     next_burst_beats = burst_calculated_beats[7:0];
   end
 
+  // DMA buffer: normal-mode controls are selected when mode_mbist is low.
+  wire        clk_i       = mode_mbist ? mbist_clk : clk;
+  wire        mem_rw      = mode_mbist ? ~Test_WEN_sram : sram_wr_en;
+  wire        mem_csn     = mode_mbist ? Test_CEN_sram : sram_csn;
+  wire [6:0]  mem_addr_in = mode_mbist ? Test_A_sram : sram_address;
+  wire [31:0] mem_din     = mode_mbist ? Test_D_sram : sram_din;
+  wire [31:0] WME         = mode_mbist ? Test_WME_sram : 32'b0;
+
+  assign Test_Q_sram = sram_dout;
+
+`ifdef INNO_HV40
+  M31GSSP200PH040S_128X1X32CM8BK1 u_local_buffer (
+    .Q(sram_dout),
+    .MS(4'b0),
+    .MSE(1'b0),
+    .RXA(4'b0),
+    .NAP(1'b0),
+    .PSD(1'b0),
+    .REPAIRR(1'b0),
+    .RET(1'b0),
+    .A(mem_addr_in),
+    .D(mem_din),
+    .WEN(~mem_rw),
+    .WME(WME),
+    .CEN(mem_csn),
+    .CLK(clk_i)
+  );
+`else
   axi_buf_dma_buffer #(
     .ADDR_WIDTH(BUFFER_ADDR_WIDTH),
     .DATA_WIDTH(32)
   ) u_local_buffer (
-    .clk(clk),
-    .address(sram_address),
-    .wr_en(sram_wr_en),
-    .csn(sram_csn),
-    .din(sram_din),
+    .clk(clk_i),
+    .address(mem_addr_in),
+    .wr_en(mem_rw),
+    .csn(mem_csn),
+    .din(mem_din),
     .dout(sram_dout)
   );
+`endif
 
   assign buf_dout = sram_dout;
   assign dma_irq = (irq_done_status & irq_done_enable) |
